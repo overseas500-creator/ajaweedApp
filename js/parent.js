@@ -1041,6 +1041,8 @@ async function pollCloudSync() {
 function safeParseKeyValue(raw) {
     if (!raw) return null;
     let s = raw.trim();
+    // استرجاع النقطتين (:) المستبدلتين بـ (~) قبل محاولة التحليل لتفادي أخطاء خادم IIS
+    s = s.replace(/~/g, ':');
     if (s.startsWith('"') && s.endsWith('"')) {
         try { s = JSON.parse(s); } catch {}
     }
@@ -1048,8 +1050,27 @@ function safeParseKeyValue(raw) {
 }
 
 function processSyncedGeneralMessages(rawVal) {
-    const cloudMsgs = safeParseKeyValue(rawVal);
-    if (!Array.isArray(cloudMsgs)) return;
+    const rawCloudMsgs = safeParseKeyValue(rawVal);
+    if (!Array.isArray(rawCloudMsgs)) return;
+
+    // تمديد المفاتيح القصيرة المستلمة من السحابة إلى المفاتيح الكاملة لتتطابق مع النظام المحلي
+    const cloudMsgs = rawCloudMsgs.map(m => {
+        let attachment = null;
+        if (m.att) {
+            attachment = {
+                type: m.att.t || m.att.type || "image",
+                name: m.att.n || m.att.name || "",
+                data: m.att.d || m.att.data || "[Base64]"
+            };
+        }
+        return {
+            id: m.id,
+            title: m.t || m.title || "إعلان عام",
+            text: m.txt || m.text || m.body || m.message || "",
+            date: m.dt || m.date,
+            attachment: attachment
+        };
+    });
 
     let localMsgs = [];
     try {
@@ -1085,8 +1106,36 @@ function processSyncedGeneralMessages(rawVal) {
 }
 
 function processSyncedStudent(studentId, rawVal) {
-    const cloudStudent = safeParseKeyValue(rawVal);
-    if (!cloudStudent || String(cloudStudent.id) !== String(studentId)) return;
+    const cloudStudentShort = safeParseKeyValue(rawVal);
+    if (!cloudStudentShort || String(cloudStudentShort.id) !== String(studentId)) return;
+
+    // تمديد المفاتيح القصيرة المستلمة من السحابة إلى المفاتيح الكاملة لتتطابق مع قاعدة البيانات المحلية
+    const cloudStudent = {
+        id: cloudStudentShort.id,
+        attendance: cloudStudentShort.att || "none",
+        attendanceTime: cloudStudentShort.time || "",
+        morningDelayMinutes: cloudStudentShort.delay || 0,
+        earlyDaysCount: cloudStudentShort.early || 0,
+        lateDaysCount: cloudStudentShort.late || 0,
+        absentDaysCount: cloudStudentShort.absent || 0,
+        privateMessages: (cloudStudentShort.msgs || []).map(m => {
+            let attachment = null;
+            if (m.att) {
+                attachment = {
+                    type: m.att.t || m.att.type || "image",
+                    name: m.att.n || m.att.name || "",
+                    data: m.att.d || m.att.data || "[Base64]"
+                };
+            }
+            return {
+                id: m.id,
+                text: m.txt || m.text || m.message || "",
+                date: m.dt || m.date,
+                read: m.rd !== undefined ? m.rd : (m.read || false),
+                attachment: attachment
+            };
+        })
+    };
 
     const localIdx = allStudents.findIndex(s => String(s.id) === String(studentId));
     if (localIdx === -1) return;

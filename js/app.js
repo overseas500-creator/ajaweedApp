@@ -2406,39 +2406,39 @@ const CLOUD_API_UPDATE = `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${
 function syncStudentToCloud(student) {
     if (!student || !student.id) return;
     
-    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (1024 حرف)
-    const messages = (student.privateMessages || student.messages || []).slice(0, 3).map(m => {
+    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (210 حروف كحد أقصى)
+    const messages = (student.privateMessages || student.messages || []).slice(0, 1).map(m => {
         let attachment = null;
         if (m.attachment) {
             attachment = {
-                type: m.attachment.type,
-                name: m.attachment.name,
-                data: m.attachment.data ? (m.attachment.data.length > 300 ? "[Base64]" : m.attachment.data) : null
+                t: m.attachment.type || "image",
+                d: "[Base64]"
             };
         }
         return {
             id: m.id,
-            text: m.text || m.message || "",
-            date: m.date,
-            read: m.read || false,
-            attachment: attachment
+            txt: (m.text || m.message || "").substring(0, 30), // تقصير النص لتفادي تخطي الحد الأقصى للمسار
+            dt: m.date,
+            rd: m.read || false,
+            att: attachment
         };
     });
 
     ensureStudentCounters(student);
     const payload = {
         id: student.id,
-        attendance: student.attendance || "none",
-        attendanceTime: student.attendanceTime || "",
-        morningDelayMinutes: student.morningDelayMinutes || student.delayMinutes || 0,
-        earlyDaysCount: student.earlyDaysCount || 0,
-        lateDaysCount: student.lateDaysCount || 0,
-        absentDaysCount: student.absentDaysCount || 0,
-        privateMessages: messages
+        att: student.attendance || "none",
+        time: student.attendanceTime || "",
+        delay: student.morningDelayMinutes || student.delayMinutes || 0,
+        early: student.earlyDaysCount || 0,
+        late: student.lateDaysCount || 0,
+        absent: student.absentDaysCount || 0,
+        msgs: messages
     };
 
     const key = `s_${student.id}`;
-    const value = JSON.stringify(payload);
+    // استبدال النقطتين (:) بعلامة المد (~) لتفادي رفض خادم IIS لمسارات URL
+    const value = JSON.stringify(payload).replace(/:/g, '~');
     
     const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
     
@@ -2452,26 +2452,26 @@ function syncStudentToCloud(student) {
 // مزامنة الإعلانات العامة إلى السحابة
 function syncGeneralMessagesToCloud() {
     if (typeof generalMessages === "undefined") return;
-    const list = generalMessages.slice(0, 3).map(m => {
+    const list = generalMessages.slice(0, 1).map(m => {
         let attachment = null;
         if (m.attachment) {
             attachment = {
-                type: m.attachment.type,
-                name: m.attachment.name,
-                data: m.attachment.data ? (m.attachment.data.length > 300 ? "[Base64]" : m.attachment.data) : null
+                t: m.attachment.type || "image",
+                d: "[Base64]"
             };
         }
         return {
             id: m.id,
-            title: m.title || "إعلان عام",
-            text: m.text || m.body || m.message || "",
-            date: m.date,
-            attachment: attachment
+            t: (m.title || "إعلان عام").substring(0, 20),
+            txt: (m.text || m.body || m.message || "").substring(0, 30),
+            dt: m.date,
+            att: attachment
         };
     });
 
     const key = "gen_msgs";
-    const value = JSON.stringify(list);
+    // استبدال النقطتين (:) بعلامة المد (~) لتفادي رفض خادم IIS لمسارات URL
+    const value = JSON.stringify(list).replace(/:/g, '~');
     
     const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
     
