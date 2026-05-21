@@ -396,19 +396,12 @@ function renderPrivateMessages(student) {
     }
 
     feed.innerHTML = messages.map(m => renderMessageCard(m, false)).join("");
-    // تعليم الرسائل كمقروءة
-    if (student.privateMessages) {
-        student.privateMessages.forEach(m => m.read = true);
-        syncStudentData(student);
-    } else if (student.messages) {
-        student.messages.forEach(m => m.read = true);
-        syncStudentData(student);
-    }
 }
 
 // الإعلانات العامة للمدرسة
 function renderGeneralMessages() {
     const feed = document.getElementById("p-general-feed");
+    const badge = document.getElementById("p-general-badge");
     if (!feed) return;
 
     let generalMessages = [];
@@ -419,6 +412,20 @@ function renderGeneralMessages() {
             generalMessages = INITIAL_GENERAL_MESSAGES;
         }
     } catch {}
+
+    // حساب الرسائل العامة غير المقروءة
+    let readIds = [];
+    try {
+        const rawRead = localStorage.getItem("ajaweed_read_general_ids");
+        if (rawRead) readIds = JSON.parse(rawRead);
+    } catch {}
+
+    const unreadCount = generalMessages.filter(m => !readIds.includes(String(m.id))).length;
+
+    if (badge) {
+        badge.textContent = unreadCount > 0 ? unreadCount : "";
+        badge.style.display = unreadCount > 0 ? "flex" : "none";
+    }
 
     const msgs = generalMessages.slice().reverse();
     if (msgs.length === 0) {
@@ -452,8 +459,25 @@ function renderMessageCard(msg, isGeneral) {
     const cfg  = typeColors[type] || typeColors.general;
     const dateStr = msg.date ? new Date(msg.date).toLocaleDateString("ar-SA") : "اليوم";
 
+    // التحقق من قراءة الرسالة
+    let isRead = false;
+    if (isGeneral) {
+        let readIds = [];
+        try {
+            const rawRead = localStorage.getItem("ajaweed_read_general_ids");
+            if (rawRead) readIds = JSON.parse(rawRead);
+        } catch {}
+        isRead = readIds.includes(String(msg.id));
+    } else {
+        isRead = !!msg.read;
+    }
+
+    const readClass = isRead ? "read" : "";
+    const cardBg = isRead ? "#f1f5f9" : cfg.bg;
+    const cardBorder = isRead ? "#cbd5e1" : cfg.border;
+
     // تقصير النص للحفاظ على تنسيق موحد للقائمة
-    const rawBody = msg.body || msg.message || "";
+    const rawBody = msg.body || msg.message || msg.text || "";
     const truncatedBody = truncateText(rawBody, 80);
 
     let attachBadge = "";
@@ -467,10 +491,10 @@ function renderMessageCard(msg, isGeneral) {
     const msgId = msg.id || Date.now().toString();
 
     return `
-        <div class="p-msg-card" style="border-right-color: ${cfg.border}; background: ${cfg.bg}; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onclick="openMessageDetail('${msgId}', ${isGeneral})">
+        <div class="p-msg-card ${readClass}" style="border-right-color: ${cardBorder}; background: ${cardBg}; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onclick="openMessageDetail('${msgId}', ${isGeneral})">
             <div class="p-msg-header">
                 <span class="p-msg-icon">${cfg.icon}</span>
-                <span class="p-msg-title">${msg.title || "إشعار"}</span>
+                <span class="p-msg-title">${msg.title || (isGeneral ? "إعلان عام" : "إشعار خاص")}</span>
                 <span class="p-msg-date">${dateStr}</span>
             </div>
             <p class="p-msg-body">${truncatedBody}</p>
@@ -491,16 +515,44 @@ function openMessageDetail(msgId, isGeneral) {
             }
         } catch {}
         msg = generalMessages.find(m => String(m.id) === String(msgId));
+
+        // تعليم الرسالة كـ مقروءة في localStorage
+        if (msg) {
+            let readIds = [];
+            try {
+                const rawRead = localStorage.getItem("ajaweed_read_general_ids");
+                if (rawRead) readIds = JSON.parse(rawRead);
+            } catch {}
+            if (!readIds.includes(String(msgId))) {
+                readIds.push(String(msgId));
+                localStorage.setItem("ajaweed_read_general_ids", JSON.stringify(readIds));
+            }
+        }
     } else {
         if (!activeChildId) return;
         const student = allStudents.find(s => String(s.id) === String(activeChildId));
         if (student) {
             const privateMessages = student.privateMessages || student.messages || [];
             msg = privateMessages.find(m => String(m.id) === String(msgId));
+
+            // تعليم الرسالة كـ مقروءة
+            if (msg && !msg.read) {
+                msg.read = true;
+                syncStudentData(student);
+            }
         }
     }
 
     if (!msg) return;
+
+    // تحديث فوري للقوائم والشارات قبل فتح المودال مباشرة
+    if (activeChildId) {
+        const student = allStudents.find(s => String(s.id) === String(activeChildId));
+        if (student) {
+            renderPrivateMessages(student);
+        }
+    }
+    renderGeneralMessages();
 
     // ملء بيانات المودال
     const typeLabel = document.getElementById("p-modal-msg-type");
@@ -526,7 +578,7 @@ function openMessageDetail(msgId, isGeneral) {
         dateEl.textContent = `📅 تاريخ النشر: ${d}`;
     }
     if (bodyEl) {
-        bodyEl.textContent = msg.body || msg.message || "";
+        bodyEl.textContent = msg.body || msg.message || msg.text || "";
     }
 
     // المرفقات

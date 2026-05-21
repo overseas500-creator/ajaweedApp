@@ -1,5 +1,5 @@
 // Service Worker for Ajaweed Notification App
-const CACHE_NAME = "ajaweed-cache-v1";
+const CACHE_NAME = "ajaweed-cache-v2";
 const ASSETS = [
   "./parent.html",
   "./index.html",

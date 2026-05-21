@@ -689,6 +689,19 @@
             transition: var(--transition);
         }
 
+        .p-msg-card.read {
+            background: #f1f5f9 !important;
+            border-right-color: #cbd5e1 !important;
+            opacity: 0.75;
+            box-shadow: none !important;
+        }
+        .p-msg-card.read .p-msg-title {
+            color: #64748b;
+        }
+        .p-msg-card.read .p-msg-body {
+            color: #94a3b8;
+        }
+
         .p-msg-card:last-child { margin-bottom: 0; }
 
         .p-msg-header {
@@ -954,6 +967,7 @@
                     <button class="p-nav-tab" id="p-tab-btn-general" onclick="switchParentTab('general')">
                         <i data-lucide="megaphone"></i>
                         إعلانات المدرسة
+                        <span class="p-badge" id="p-general-badge">0</span>
                     </button>
                 </div>
 
@@ -1107,8 +1121,40 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+                    .then(reg => {
+                        console.log('Service Worker registered successfully!', reg.scope);
+                        
+                        // فحص التحديثات فورياً عند الدخول
+                        reg.update();
+                        
+                        // فحص دوري للتحديثات كل 60 ثانية
+                        setInterval(() => {
+                            reg.update();
+                        }, 60000);
+                        
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed') {
+                                        if (navigator.serviceWorker.controller) {
+                                            console.log('New content is available; update pending.');
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    })
                     .catch(err => console.error('Service Worker registration failed:', err));
+            });
+
+            // إعادة تحميل الصفحة فورياً بمجرد تفعيل خدمة الـ Worker الجديدة لتحديث الكاش تلقائياً
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                console.log('Controller changed. Reloading page...');
+                window.location.reload();
             });
         }
     </script>

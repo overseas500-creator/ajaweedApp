@@ -839,8 +839,40 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registered in admin dashboard!', reg.scope))
+                    .then(reg => {
+                        console.log('Service Worker registered in admin dashboard!', reg.scope);
+                        
+                        // فحص التحديثات فورياً عند الدخول
+                        reg.update();
+                        
+                        // فحص دوري للتحديثات كل 60 ثانية
+                        setInterval(() => {
+                            reg.update();
+                        }, 60000);
+                        
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed') {
+                                        if (navigator.serviceWorker.controller) {
+                                            console.log('New content is available; update pending.');
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    })
                     .catch(err => console.error('Service Worker registration failed:', err));
+            });
+
+            // إعادة تحميل الصفحة فورياً بمجرد تفعيل خدمة الـ Worker الجديدة لتحديث الكاش تلقائياً
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                console.log('Controller changed. Reloading page...');
+                window.location.reload();
             });
         }
     </script>
