@@ -7,7 +7,7 @@
     <meta name="description" content="استقبل إشعارات حضور وغياب أبنائك فورياً من مدرسة الأجاويد الأولى المتوسطة">
 
     <!-- PWA -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="parent_manifest.json">
     <meta name="theme-color" content="#0f5132">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -781,6 +781,11 @@
                 padding-bottom: 40px;
             }
         }
+
+        @keyframes starGlow {
+            from { box-shadow: 0 0 10px rgba(197, 168, 128, 0.3), inset 0 0 5px rgba(197, 168, 128, 0.2); }
+            to { box-shadow: 0 0 25px rgba(197, 168, 128, 0.7), inset 0 0 15px rgba(197, 168, 128, 0.4); }
+        }
     </style>
 </head>
 <body>
@@ -888,9 +893,16 @@
                         <p id="p-parent-phone-display"></p>
                     </div>
                 </div>
-                <button class="p-btn-logout" onclick="parentLogout()" title="تسجيل الخروج">
-                    <i data-lucide="log-out"></i>
-                </button>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="p-stars-container" style="background: rgba(197, 168, 128, 0.18); border: 1px solid var(--accent-color); border-radius: var(--radius-md); padding: 6px 12px; display: flex; align-items: center; gap: 6px; color: var(--accent-color); font-weight: 600; font-size: 0.88rem; box-shadow: 0 0 10px rgba(197,168,128,0.1); border-color: rgba(197,168,128,0.5);">
+                        <i data-lucide="star" style="width: 15px; height: 15px; fill: var(--accent-color); color: var(--accent-color);"></i>
+                        <span id="p-stars-count">0</span> نجمة
+                    </div>
+                    <button class="p-btn-logout" onclick="parentLogout()" title="تسجيل الخروج">
+                        <i data-lucide="log-out"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- تبويبات الأبناء -->
@@ -996,6 +1008,54 @@
         مدرسة الأجاويد الأولى المتوسطة &nbsp;|&nbsp; جميع الحقوق محفوظة © 2025
     </div>
 
+    <!-- مودال تعليمات التثبيت لهواتف آيفون (iOS Safari) -->
+    <div class="modal-overlay" id="p-ios-install-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: var(--bg-dark); border: 2px solid var(--accent-color); border-radius: var(--radius-lg); width: 100%; max-width: 400px; padding: 24px; color: var(--text-light); text-align: center; box-shadow: var(--shadow-premium); position: relative; direction: rtl;">
+            <button onclick="closeIOSInstallModal()" style="position: absolute; top: 12px; left: 16px; background: none; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; line-height: 1;">&times;</button>
+            <div style="background: rgba(197, 168, 128, 0.1); border: 2px solid var(--accent-color); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <i data-lucide="share" style="color: var(--accent-color); width: 28px; height: 28px;"></i>
+            </div>
+            <h3 style="color: var(--accent-color); font-size: 1.25rem; font-weight: 700; margin-bottom: 12px;">تثبيت على جهاز الآيفون (iOS)</h3>
+            <p style="font-size: 0.9rem; line-height: 1.6; color: #ccc; margin-bottom: 20px;">
+                لتثبيت تطبيق الأجاويد على شاشتك الرئيسية، يرجى اتباع الخطوتين التاليتين باستخدام متصفح <strong>Safari</strong>:
+            </p>
+            <div style="text-align: right; background: rgba(255,255,255,0.05); padding: 16px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start;">
+                    <span style="background: var(--accent-color); color: var(--primary-dark); font-weight: bold; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem;">١</span>
+                    <span style="font-size: 0.88rem;">اضغط على زر المشاركة <strong style="color:#fff;">(Share <i data-lucide="share" style="width:14px;height:14px;vertical-align:middle;display:inline-block;"></i>)</strong> في شريط السفاري السفلي.</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="background: var(--accent-color); color: var(--primary-dark); font-weight: bold; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem;">٢</span>
+                    <span style="font-size: 0.88rem;">اختر <strong style="color: var(--accent-color);">"إضافة إلى الشاشة الرئيسية" (Add to Home Screen <i data-lucide="plus-square" style="width:14px;height:14px;vertical-align:middle;display:inline-block;"></i>)</strong> من القائمة.</span>
+                </div>
+            </div>
+            <button onclick="closeIOSInstallModal()" style="background: linear-gradient(135deg, var(--primary-light), var(--primary-color)); border: none; border-radius: var(--radius-md); color: #fff; padding: 10px 24px; font-weight: 600; cursor: pointer; width: 100%; transition: var(--transition);">حسناً، فهمت</button>
+        </div>
+    </div>
+
+    <!-- مودال المكافأة اليومية لأولياء الأمور -->
+    <div class="modal-overlay" id="p-reward-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center; padding: 20px; direction: rtl;">
+        <div style="background: var(--bg-dark); border: 2px solid var(--accent-color); border-radius: var(--radius-lg); width: 100%; max-width: 420px; padding: 30px 24px; color: var(--text-light); text-align: center; box-shadow: var(--shadow-premium); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
+            <canvas id="p-reward-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></canvas>
+            <div style="position: relative; z-index: 2; width: 100%;">
+                <div class="reward-star-icon" style="background: rgba(197, 168, 128, 0.1); border: 2px solid var(--accent-color); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 0 20px rgba(197, 168, 128, 0.4); animation: starGlow 2s infinite alternate;">
+                    <i data-lucide="star" style="color: var(--accent-color); fill: var(--accent-color); width: 44px; height: 44px;"></i>
+                </div>
+                <h2 id="p-reward-title" style="color: var(--accent-color); font-size: 1.4rem; font-weight: 700; margin-bottom: 12px; line-height: 1.4;">أهلاً بك ، أنت ولي أمر رائع!</h2>
+                <p id="p-reward-desc" style="font-size: 0.95rem; line-height: 1.6; color: #ddd; margin-bottom: 24px; min-height: 48px;">
+                    أنت قدوة في اهتمامك ومتابعتك لأبنائك. لقد حصلت اليوم على نجمة تشجيعية!
+                </p>
+                <div style="background: rgba(255,255,255,0.05); padding: 12px 24px; border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 24px; display: inline-flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.95rem; color: #bbb;">رصيدك الإجمالي:</span>
+                    <strong style="color: var(--accent-color); font-size: 1.4rem; display: flex; align-items: center; gap: 4px;" id="p-reward-star-badge">
+                        ⭐ <span id="p-reward-star-count" style="display:inline-block; transition: transform 0.3s ease;">0</span>
+                    </strong>
+                </div>
+                <button onclick="closeRewardModal()" style="background: linear-gradient(135deg, var(--accent-color) 0%, #b39368 100%); border: none; border-radius: var(--radius-md); color: var(--primary-dark); padding: 12px 30px; font-weight: 700; cursor: pointer; width: 100%; transition: var(--transition); font-size: 1rem; box-shadow: var(--shadow-premium);">حسناً، استمر بالتميز</button>
+            </div>
+        </div>
+    </div>
+
     <!-- توست الإشعارات -->
     <div id="p-toast"></div>
 
@@ -1005,5 +1065,15 @@
     <!-- منطق بوابة أولياء الأمور -->
     <script src="js/parent.js"></script>
 
+    <!-- تسجيل Service Worker للتثبيت كـ PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+    </script>
 </body>
 </html>

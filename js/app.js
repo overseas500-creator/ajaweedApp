@@ -110,6 +110,7 @@ let generalMessages = [];
 let currentStudentId = null; // الطالب النشط حالياً في محاكي الجوال
 let sentNotificationsTodayCount = 0;
 let currentAttachment = null; // المرفق الحالي (صورة أو PDF)
+let accordionStates = {}; // حالة الأكورديونات للصفوف (مفتوح/مغلق)
 
 // تحميل البيانات عند بدء تشغيل المنصة
 document.addEventListener("DOMContentLoaded", () => {
@@ -168,6 +169,23 @@ function setAppLogo() {
     };
 }
 
+// تطبيع رقم الجوال بشكل متقدم ومقاوم للخطأ (يتعامل مع الفراغات، الشرطات، العشرية .0، والأرقام الهندية)
+function normalizePhone(phone) {
+    if (!phone) return "";
+    let p = String(phone).trim();
+    if (p.endsWith(".0")) {
+        p = p.slice(0, -2);
+    }
+    p = p.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+    p = p.replace(/\D/g, "");
+    if (p.startsWith("9665") && p.length === 12) {
+        p = "0" + p.slice(3);
+    } else if (p.startsWith("5") && p.length === 9) {
+        p = "0" + p;
+    }
+    return p;
+}
+
 // تهيئة قاعدة البيانات المحلية
 function initDatabase() {
     const storedStudents = localStorage.getItem("ajaweed_students");
@@ -176,8 +194,57 @@ function initDatabase() {
 
     if (storedStudents) {
         students = JSON.parse(storedStudents);
+        // ترحيل الفصول القديمة من الحروف إلى الأرقام + إصلاح أرقام الجوالات
+        let migrated = false;
+        
+        // 1. إصلاح أرقام الهواتف من واقع قاعدة البيانات الأولية إذا تم تصفيرها أو تدميرها بالرفع
+        if (typeof INITIAL_STUDENTS !== "undefined") {
+            students.forEach(s => {
+                const refStudent = INITIAL_STUDENTS.find(ref => String(ref.id) === String(s.id));
+                if (refStudent && refStudent.parentPhone) {
+                    const normRef = normalizePhone(refStudent.parentPhone);
+                    const normCurrent = normalizePhone(s.parentPhone);
+                    if (normRef && normRef !== normCurrent) {
+                        s.parentPhone = normRef;
+                        migrated = true;
+                    }
+                }
+            });
+        }
+
+        // 2. ترحيل الفصول القديمة من الحروف إلى الأرقام
+        students.forEach(s => {
+            if (s.grade && s.grade.includes(" - ")) {
+                const parts = s.grade.split(" - ");
+                let div = parts[1];
+                if (div === "أ") { div = "1"; migrated = true; }
+                else if (div === "ب") { div = "2"; migrated = true; }
+                else if (div === "ج") { div = "3"; migrated = true; }
+                else if (div === "د") { div = "4"; migrated = true; }
+                s.grade = parts[0] + " - " + div;
+            }
+        });
+
+        if (migrated) {
+            localStorage.setItem("ajaweed_students", JSON.stringify(students));
+        }
     } else {
         students = JSON.parse(JSON.stringify(INITIAL_STUDENTS));
+        // ترحيل الفصول القديمة من الحروف إلى الأرقام للبيانات الأولية أيضاً
+        students.forEach(s => {
+            if (s.grade && s.grade.includes(" - ")) {
+                const parts = s.grade.split(" - ");
+                let div = parts[1];
+                if (div === "أ") { div = "1"; }
+                else if (div === "ب") { div = "2"; }
+                else if (div === "ج") { div = "3"; }
+                else if (div === "د") { div = "4"; }
+                s.grade = parts[0] + " - " + div;
+            }
+            if (s.parentPhone) {
+                s.parentPhone = normalizePhone(s.parentPhone);
+            }
+        });
         localStorage.setItem("ajaweed_students", JSON.stringify(students));
     }
 
@@ -296,10 +363,11 @@ function populateRecipientsDropdown() {
     }
 }
 
-// رندرة جدول الطلاب ودليل المدرسة
+// رندرة جدول الطلاب ودليل المدرسة على هيئة أكورديونات مجمعة حسب الصفوف
 function renderStudentsTable() {
-    const tbody = document.getElementById("students-table-body");
-    tbody.innerHTML = "";
+    const container = document.getElementById("students-accordion-container");
+    if (!container) return; // safety check
+    container.innerHTML = "";
 
     const searchVal = document.getElementById("student-search").value.toLowerCase();
     const filterVal = document.getElementById("status-filter").value;
@@ -311,73 +379,235 @@ function renderStudentsTable() {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; color: #888; padding: 30px;">
-                    <i data-lucide="users-round" style="width: 32px; height: 32px; margin-bottom: 8px;"></i>
-                    <p>لا يوجد طلاب يطابقون خيارات البحث الحالية.</p>
-                </td>
-            </tr>
+        container.innerHTML = `
+            <div style="text-align: center; color: #888; padding: 40px; background: var(--card-bg); border: 1px dashed var(--border-color); border-radius: 10px; margin: 16px 24px;">
+                <i data-lucide="users-round" style="width: 48px; height: 48px; margin-bottom: 12px; color: var(--gold-primary);"></i>
+                <p style="font-family: 'Tajawal', sans-serif; font-size: 1rem; font-weight: 500;">لا يوجد طلاب يطابقون خيارات البحث أو التصفية الحالية.</p>
+            </div>
         `;
         lucide.createIcons();
         return;
     }
 
+    // تجميع الطلاب حسب الصف الدراسي
+    const grouped = {};
     filtered.forEach(s => {
-        const tr = document.createElement("tr");
+        const grade = s.grade || "غير مححدد";
+        if (!grouped[grade]) {
+            grouped[grade] = [];
+        }
+        grouped[grade].push(s);
+    });
 
-        // شارة الحضور اليوم
-        let attClass = "present";
-        let attLabel = "حاضر";
-        let attIcon = "smile";
-        if (s.attendance === "absent") {
-            attClass = "absent";
-            attLabel = "غائب";
-            attIcon = "frown";
-        } else if (s.attendance === "delayed") {
-            attClass = "delayed";
-            attLabel = `متأخر (${s.morningDelayMinutes}د)`;
-            attIcon = "clock";
+    // ترتيب الصفوف ترتيباً أبجدياً رقمياً
+    const grades = Object.keys(grouped).sort((a, b) => {
+        return a.localeCompare(b, "ar", { numeric: true });
+    });
+
+    // في حال وجود كلمة بحث أو تصفية معينة، يتم إجبار جميع الأكورديونات على الفتح تلقائياً للتسهيل
+    const forceExpand = (searchVal.length > 0) || (filterVal !== "all");
+
+    grades.forEach((grade, index) => {
+        const gradeStudents = grouped[grade];
+        const totalCount = gradeStudents.length;
+        const activeCount = gradeStudents.filter(s => s.status === 'installed').length;
+        const inactiveCount = totalCount - activeCount;
+
+        // تهيئة الحالة الافتراضية إذا لم تكن موجودة
+        if (accordionStates[grade] === undefined) {
+            accordionStates[grade] = true; // الافتراضي مفتوح
         }
 
-        tr.innerHTML = `
-            <td>
-                <div class="student-meta-cell">
-                    <span class="student-name">${s.name}</span>
-                    <span class="student-grade">${s.grade}</span>
+        const isExpanded = forceExpand || accordionStates[grade];
+
+        // إنشاء كارد الأكورديون
+        const accordionDiv = document.createElement("div");
+        accordionDiv.className = `grade-accordion ${isExpanded ? 'expanded' : ''}`;
+        
+        // توليد صفوف الجدول لهذا الصف الدراسي
+        let rowsHtml = "";
+        gradeStudents.forEach(s => {
+            let attClass = "present";
+            let attLabel = "حاضر";
+            let attIcon = "smile";
+            if (s.attendance === "absent") {
+                attClass = "absent";
+                attLabel = "غائب";
+                attIcon = "frown";
+            } else if (s.attendance === "delayed") {
+                attClass = "delayed";
+                attLabel = `متأخر (${s.morningDelayMinutes}د)`;
+                attIcon = "clock";
+            }
+
+            rowsHtml += `
+                <tr>
+                    <td>
+                        <div class="student-meta-cell">
+                            <span class="student-name">${s.name}</span>
+                            <span class="student-grade">${s.grade}</span>
+                        </div>
+                    </td>
+                    <td><span class="id-code">${s.id}</span></td>
+                    <td>
+                        <div class="parent-info-cell">
+                            <span class="parent-name">${s.parentName}</span>
+                            <span class="parent-phone">${s.parentPhone}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge ${s.status === 'installed' ? 'active' : 'inactive'}">
+                            <i data-lucide="${s.status === 'installed' ? 'smartphone' : 'smartphone-off'}"></i>
+                            ${s.status === 'installed' ? 'نشط (تم التنزيل)' : 'غير نشط (لم ينزل)'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="table-att-badge ${attClass}" onclick="cycleStudentAttendance('${s.id}')" title="انقر لتغيير التحضير فوراً">
+                            <i data-lucide="${attIcon}"></i> ${attLabel}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-action btn-send-notif" onclick="selectStudentForNotification('${s.id}')" title="إرسال إشعار مباشر">
+                                <i data-lucide="bell"></i>
+                            </button>
+                            <button class="btn-action btn-delete" onclick="handleDeleteStudent('${s.id}')" title="حذف الطالب">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // تركيب هيكل الأكورديون
+        accordionDiv.innerHTML = `
+            <div class="grade-accordion-header" onclick="toggleAccordion('${grade}')">
+                <div class="accordion-header-left">
+                    <i data-lucide="chevron-down" class="accordion-chevron"></i>
+                    <span class="grade-title">${grade}</span>
                 </div>
-            </td>
-            <td><span class="id-code">${s.id}</span></td>
-            <td>
-                <div class="parent-info-cell">
-                    <span class="parent-name">${s.parentName}</span>
-                    <span class="parent-phone">${s.parentPhone}</span>
+                <div class="accordion-header-stats">
+                    <span class="stat-badge total">إجمالي الطلاب: ${totalCount}</span>
+                    <span class="stat-badge active">نشط: ${activeCount} 🟢</span>
+                    <span class="stat-badge inactive">غير نشط: ${inactiveCount} 🔴</span>
                 </div>
-            </td>
-            <td>
-                <span class="status-badge ${s.status === 'installed' ? 'active' : 'inactive'}">
-                    <i data-lucide="${s.status === 'installed' ? 'smartphone' : 'smartphone-off'}"></i>
-                    ${s.status === 'installed' ? 'نشط (تم التنزيل)' : 'غير نشط (لم ينزل)'}
-                </span>
-            </td>
-            <td>
-                <span class="table-att-badge ${attClass}" onclick="cycleStudentAttendance('${s.id}')" title="انقر لتغيير التحضير فوراً">
-                    <i data-lucide="${attIcon}"></i> ${attLabel}
-                </span>
-            </td>
-            <td>
-                <div class="table-actions">
-                    <button class="btn-action btn-send-notif" onclick="selectStudentForNotification('${s.id}')" title="إرسال إشعار مباشر">
-                        <i data-lucide="bell"></i>
-                    </button>
-                    <button class="btn-action btn-delete" onclick="handleDeleteStudent('${s.id}')" title="حذف الطالب">
-                        <i data-lucide="trash-2"></i>
-                    </button>
+            </div>
+            <div class="grade-accordion-content-wrapper">
+                <div class="grade-accordion-content" style="min-height: 0;">
+                    <div class="grade-accordion-inner-content">
+                        <div class="table-container">
+                            <table class="students-table">
+                                <thead>
+                                    <tr>
+                                        <th>الطالب / الصف</th>
+                                        <th>هوية الطالب</th>
+                                        <th>ولي الأمر / الهاتف</th>
+                                        <th>حالة التطبيق</th>
+                                        <th>تحضير اليوم</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </td>
+            </div>
         `;
-        tbody.appendChild(tr);
+
+        container.appendChild(accordionDiv);
     });
+
+    lucide.createIcons();
+}
+
+// تبديل حالة فتح/إغلاق الأكورديون للصف الدراسي
+function toggleAccordion(grade) {
+    // تحديث الحالة في الذاكرة
+    accordionStates[grade] = !accordionStates[grade];
+    
+    // البحث عن الأكورديون وتغيير الكلاس فوراً لتأثير بصري فائق السرعة
+    const accordions = document.querySelectorAll(".grade-accordion");
+    accordions.forEach(acc => {
+        const titleEl = acc.querySelector(".grade-title");
+        if (titleEl && titleEl.textContent.trim() === grade.trim()) {
+            acc.classList.toggle("expanded");
+        }
+    });
+}
+
+// توسيع كافة الصفوف الدراسية
+function expandAllAccordions() {
+    for (const key in accordionStates) {
+        accordionStates[key] = true;
+    }
+    renderStudentsTable();
+}
+
+// طي كافة الصفوف الدراسية
+function collapseAllAccordions() {
+    for (const key in accordionStates) {
+        accordionStates[key] = false;
+    }
+    renderStudentsTable();
+}
+
+// تصدير قوائم الطلاب المفعلين أو غير المفعلين إلى ملف Excel باللغة العربية وتنسيق RTL
+function exportStudentsToExcel(statusFilter) {
+    const filtered = students.filter(s => s.status === statusFilter);
+    if (filtered.length === 0) {
+        showToast("error", "لا يوجد طلاب يطابقون هذه الحالة لتصديرهم.");
+        return;
+    }
+    
+    // تحويل البيانات للأعمدة العربية الأنيقة
+    const data = filtered.map((s, idx) => {
+        let attLabel = "حاضر";
+        if (s.attendance === "absent") {
+            attLabel = "غائب";
+        } else if (s.attendance === "delayed") {
+            attLabel = `متأخر (${s.morningDelayMinutes} دقيقة)`;
+        }
+
+        return {
+            "م": idx + 1,
+            "رقم الهوية الوطنية": s.id,
+            "اسم الطالب رباعياً": s.name,
+            "الصف الدراسي / الفصل": s.grade,
+            "اسم ولي الأمر": s.parentName,
+            "رقم جوال ولي الأمر": s.parentPhone,
+            "حالة الحضور اليوم": attLabel,
+            "حالة تفعيل التطبيق": s.status === 'installed' ? 'نشط (مفعل)' : 'غير نشط (غير مفعل)'
+        };
+    });
+    
+    // إنشاء ورقة العمل والمصنف
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!dir'] = 'rtl'; // محاذاة من اليمين إلى اليسار للعربية
+    
+    // ضبط قياسات الأعمدة لتكون احترافية وسهلة القراءة والطباعة
+    const wscols = [
+        { wch: 6 },   // م
+        { wch: 18 },  // رقم الهوية
+        { wch: 30 },  // اسم الطالب
+        { wch: 25 },  // الصف الدراسي
+        { wch: 25 },  // اسم ولي الأمر
+        { wch: 18 },  // رقم الجوال
+        { wch: 20 },  // حالة الحضور
+        { wch: 18 }   // حالة التفعيل
+    ];
+    ws['!cols'] = wscols;
+    
+    const wb = XLSX.utils.book_new();
+    const sheetName = statusFilter === 'installed' ? "الطلاب النشطين" : "الطلاب غير النشطين";
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    
+    const fileName = statusFilter === 'installed' ? "الطلاب_النشطين_المفعلين.xlsx" : "الطلاب_غير_النشطين.xlsx";
+    XLSX.writeFile(wb, fileName);
+    showToast("success", "تم تصدير ملف الإكسل بنجاح!");
 }
 
 // رندرة سجل الإشعارات الصادرة
@@ -1292,7 +1522,7 @@ function handleAddStudentSubmit(e) {
     const name = document.getElementById("new-student-name").value.trim();
     const grade = document.getElementById("new-student-grade").value;
     const parentName = document.getElementById("new-parent-name").value.trim();
-    const parentPhone = document.getElementById("new-parent-phone").value.trim();
+    const parentPhone = normalizePhone(document.getElementById("new-parent-phone").value.trim());
     const status = document.getElementById("new-student-status").value;
 
     // التحقق من تكرار رقم الهوية
@@ -1484,16 +1714,7 @@ function handleExcelImport(event) {
                 }
 
                 // 1. تطبيع رقم الهاتف (Mobile Normalization)
-                let mobile = String(rawMobile || '').trim();
-                if (mobile.startsWith("966")) {
-                    mobile = "0" + mobile.substring(3);
-                } else if (mobile.startsWith("5")) {
-                    mobile = "0" + mobile;
-                }
-                // التحقق من صحة الرقم وإلا وضع رقم افتراضي منظم
-                if (!mobile || !/^05\d{8}$/.test(mobile)) {
-                    mobile = "05" + Math.floor(10000000 + Math.random() * 90000000); 
-                }
+                let mobile = normalizePhone(rawMobile);
 
                 // 2. استخلاص اسم الأب/العائلة لولي الأمر من اسم الطالب رباعياً
                 const nameParts = studentName.split(/\s+/);
@@ -1507,25 +1728,40 @@ function handleExcelImport(event) {
                 // 3. مواءمة الصف والفصل مع الخيارات الستة المتاحة بالتطبيق
                 const grade = mapExcelGrade(rawGrade, rawDivision);
 
-                // تجهيز كائن الطالب الجديد
-                const studentObj = {
-                    id: studentId,
-                    name: studentName,
-                    grade: grade,
-                    parentName: parentName,
-                    parentPhone: mobile,
-                    status: Math.random() > 0.4 ? "installed" : "not_installed", // حالة عشوائية
-                    lastActive: Math.random() > 0.3 ? "منذ دقيقتين" : "غير نشط حالياً"
-                };
-
                 // التحقق مما إذا كان الطالب موجوداً مسبقاً برقم الهوية
                 const existingIdx = students.findIndex(s => s.id === studentId);
+
+                // التحقق من صحة الرقم وإلا الحفاظ على رقم الجوال القديم إذا وجد، وإلا توليد رقم عشوائي
+                if (!mobile || !/^05\d{8}$/.test(mobile)) {
+                    if (existingIdx !== -1 && students[existingIdx].parentPhone) {
+                        mobile = students[existingIdx].parentPhone;
+                    } else {
+                        mobile = "05" + Math.floor(10000000 + Math.random() * 90000000); 
+                    }
+                }
+
                 if (existingIdx !== -1) {
-                    // تحديث بيانات الطالب القائم
-                    students[existingIdx] = { ...students[existingIdx], ...studentObj };
+                    // تحديث بيانات الطالب القائم مع الحفاظ على حالته وتاريخه
+                    students[existingIdx].name = studentName;
+                    students[existingIdx].grade = grade;
+                    students[existingIdx].parentName = parentName;
+                    students[existingIdx].parentPhone = mobile;
+                    // لا يتم تغيير الحقول التاريخية (status, lastActive, attendance, morningDelayMinutes, privateMessages)
                     updatedCount++;
                 } else {
-                    // إضافة طالب جديد
+                    // تجهيز كائن طالب جديد بنسبة 100% وبقيم افتراضية نظيفة
+                    const studentObj = {
+                        id: studentId,
+                        name: studentName,
+                        grade: grade,
+                        parentName: parentName,
+                        parentPhone: mobile,
+                        status: "not_installed",
+                        attendance: "present",
+                        morningDelayMinutes: 0,
+                        lastActive: "غير نشط",
+                        privateMessages: []
+                    };
                     students.push(studentObj);
                     importedCount++;
                 }
@@ -1563,7 +1799,7 @@ function handleExcelImport(event) {
 // دالة ذكية لمواءمة الصف والفصل من ملف الإكسل
 function mapExcelGrade(gradeVal, divisionVal) {
     const gradeStr = String(gradeVal || '').trim();
-    const divStr = String(divisionVal || '').trim();
+    let divStr = String(divisionVal || '').trim();
     
     let gradeNum = 1; // الافتراضي الأول المتوسط
     if (gradeStr.includes("ثاني") || gradeStr.includes("الثاني") || gradeStr.includes("2")) {
@@ -1572,13 +1808,27 @@ function mapExcelGrade(gradeVal, divisionVal) {
         gradeNum = 3;
     }
     
-    let divLetter = "أ"; // الافتراضي الفصل أ
-    if (divStr.includes("ب") || divStr.includes("2") || divStr.includes("بنين") || divStr.includes("ب ")) {
-        divLetter = "ب";
+    // إرجاع الفصل لأرقام
+    let divNum = "1";
+    if (divStr.includes("أ") || divStr.includes("1") || divStr.includes("اول") || divStr.includes("الأول")) {
+        divNum = "1";
+    } else if (divStr.includes("ب") || divStr.includes("2") || divStr.includes("ثاني") || divStr.includes("الثاني") || divStr.includes("بنين")) {
+        divNum = "2";
+    } else if (divStr.includes("ج") || divStr.includes("3") || divStr.includes("ثالث") || divStr.includes("الثالث")) {
+        divNum = "3";
+    } else if (divStr.includes("د") || divStr.includes("4") || divStr.includes("رابع") || divStr.includes("الرابع")) {
+        divNum = "4";
+    } else {
+        const match = divStr.match(/\d+/);
+        if (match) {
+            divNum = match[0];
+        } else if (divStr) {
+            divNum = divStr;
+        }
     }
     
     const arabicGrades = ["الأول", "الثاني", "الثالث"];
-    return `الصف ${arabicGrades[gradeNum - 1]} المتوسط - ${divLetter}`;
+    return `الصف ${arabicGrades[gradeNum - 1]} المتوسط - ${divNum}`;
 }
 
 // ==========================================================================

@@ -334,6 +334,48 @@ body {
     color: #b08030;
 }
 
+/* بطاقة غير النشطين مع زر التصدير */
+.stat-card-inactive-wrap {
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-export-inactive {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(220, 53, 69, 0.25);
+    background: rgba(220, 53, 69, 0.06);
+    color: var(--danger-color);
+    font-family: var(--font-ar);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    margin-right: auto;
+}
+
+.btn-export-inactive svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.btn-export-inactive:hover {
+    background: rgba(220, 53, 69, 0.14);
+    border-color: var(--danger-color);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(220,53,69,0.15);
+}
+
+.btn-export-inactive:active {
+    transform: translateY(0) scale(0.97);
+}
+
 /* بطاقة الإجراء السريع - قابلة للنقر بأسلوب مميز */
 .stat-card-action {
     cursor: pointer;
@@ -769,6 +811,158 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="
 
 .filter-box select {
     min-width: 160px;
+}
+
+/* ==========================================================================
+   تنسيقات الأكورديون الفاخرة لصفوف الطلاب (Grade Accordion Styling)
+   ========================================================================== */
+.accordions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px 24px;
+}
+
+.grade-accordion {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grade-accordion:hover {
+    box-shadow: 0 8px 20px rgba(15, 81, 50, 0.05);
+    border-color: var(--gold-primary);
+}
+
+.grade-accordion.expanded {
+    border-color: var(--emerald-primary);
+    box-shadow: 0 10px 24px rgba(15, 81, 50, 0.08);
+}
+
+.grade-accordion-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 251, 249, 0.9) 100%);
+    transition: background 0.2s ease;
+}
+
+.grade-accordion-header:hover {
+    background: linear-gradient(135deg, rgba(253, 251, 247, 0.95) 0%, rgba(245, 248, 245, 0.95) 100%);
+}
+
+.accordion-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.accordion-chevron {
+    color: var(--gold-primary);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 20px;
+    height: 20px;
+}
+
+.grade-accordion.expanded .accordion-chevron {
+    transform: rotate(-180deg);
+}
+
+.grade-title {
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: var(--emerald-dark);
+}
+
+.accordion-header-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.accordion-header-stats .stat-badge {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.accordion-header-stats .stat-badge.total {
+    background-color: #f0f3f1;
+    color: #555;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.accordion-header-stats .stat-badge.active {
+    background-color: rgba(46, 125, 50, 0.08);
+    color: #2e7d32;
+    border: 1px solid rgba(46, 125, 50, 0.15);
+}
+
+.accordion-header-stats .stat-badge.inactive {
+    background-color: rgba(198, 40, 40, 0.08);
+    color: #c62828;
+    border: 1px solid rgba(198, 40, 40, 0.15);
+}
+
+.grade-accordion-content-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.grade-accordion.expanded .grade-accordion-content-wrapper {
+    grid-template-rows: 1fr;
+}
+
+.grade-accordion-content {
+    overflow: hidden;
+}
+
+.grade-accordion-inner-content {
+    border-top: 1px solid var(--border-light);
+    background-color: #ffffff;
+}
+
+/* أزرار التصدير الفاخرة */
+.btn-emerald-outline {
+    background-color: rgba(46, 125, 50, 0.05) !important;
+    border: 1px solid rgba(46, 125, 50, 0.25) !important;
+    color: #2e7d32 !important;
+}
+
+.btn-emerald-outline:hover {
+    background-color: #2e7d32 !important;
+    color: #ffffff !important;
+    border-color: #2e7d32 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(46, 125, 50, 0.15);
+}
+
+.btn-rose-outline {
+    background-color: rgba(198, 40, 40, 0.05) !important;
+    border: 1px solid rgba(198, 40, 40, 0.25) !important;
+    color: #c62828 !important;
+}
+
+.btn-rose-outline:hover {
+    background-color: #c62828 !important;
+    color: #ffffff !important;
+    border-color: #c62828 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(198, 40, 40, 0.15);
 }
 
 .table-container {

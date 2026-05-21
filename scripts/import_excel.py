@@ -173,15 +173,19 @@ def main():
             
         arabic_grades = ["الأول", "الثاني", "الثالث"]
         
-        arabic_divisions = {
-            "1": "أ", "2": "ب", "3": "ج", "4": "د", "5": "هـ",
-            "6": "و", "7": "ز", "8": "ح", "9": "ط", "10": "ي"
-        }
-        div_letter = arabic_divisions.get(d_str, d_str)
-        if not div_letter:
-            div_letter = "أ"
+        div_num = d_str
+        if not div_num:
+            div_num = "1"
+        elif div_num == "أ":
+            div_num = "1"
+        elif div_num == "ب":
+            div_num = "2"
+        elif div_num == "ج":
+            div_num = "3"
+        elif div_num == "د":
+            div_num = "4"
             
-        return f"الصف {arabic_grades[grade_num - 1]} المتوسط - {div_letter}"
+        return f"الصف {arabic_grades[grade_num - 1]} المتوسط - {div_num}"
 
     # Determine data start row
     # In StudentGuidance (3).xls, rows 0-3 are header and title. Row 4 (5th row) contains actual data.
