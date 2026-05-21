@@ -609,6 +609,53 @@ function renderMessageCard(msg, isGeneral) {
         </div>`;
 }
 
+// دالة لحل ومعالجة بيانات المرفق ديناميكياً (خاصة عند تخفيض حجم الصور إلى [Base64] في السحابة)
+function resolveAttachmentData(msg, isGeneral, studentId = null) {
+    if (!msg || !msg.attachment) return "";
+    let data = msg.attachment.data;
+    
+    // إذا كانت البيانات عبارة عن مؤشر [Base64] أو شعار افتراضي، نحاول جلب البيانات الأصلية الكاملة من تخزين الإدارة المحلي (في حال التشغيل على نفس المتصفح)
+    if (!data || data === "[Base64]" || data === "ajaweed_logo_1779318974019.png") {
+        if (isGeneral) {
+            try {
+                const rawAdmin = localStorage.getItem("ajaweed_general_messages");
+                if (rawAdmin) {
+                    const adminMsgs = JSON.parse(rawAdmin);
+                    const found = adminMsgs.find(m => String(m.id) === String(msg.id));
+                    if (found && found.attachment && found.attachment.data && found.attachment.data !== "[Base64]" && found.attachment.data !== "ajaweed_logo_1779318974019.png") {
+                        return found.attachment.data;
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to resolve general message attachment:", e);
+            }
+        } else {
+            try {
+                const rawAdminSt = localStorage.getItem("ajaweed_students");
+                if (rawAdminSt) {
+                    const adminStudents = JSON.parse(rawAdminSt);
+                    // البحث في جميع الطلاب بالإدارة أو تحديد طالب معين
+                    const search = studentId ? adminStudents.filter(s => String(s.id) === String(studentId)) : adminStudents;
+                    for (const s of search) {
+                        const messages = s.privateMessages || s.messages || [];
+                        const found = messages.find(m => String(m.id) === String(msg.id));
+                        if (found && found.attachment && found.attachment.data && found.attachment.data !== "[Base64]" && found.attachment.data !== "ajaweed_logo_1779318974019.png") {
+                            return found.attachment.data;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to resolve private message attachment:", e);
+            }
+        }
+        
+        // شعار افتراضي راقٍ كخيار بديل لتفادي ظهور أيقونة صورة مكسورة
+        return "ajaweed_logo_1779318974019.png";
+    }
+    
+    return data;
+}
+
 // دالة فتح تفاصيل الرسالة بمودال جميل
 function openMessageDetail(msgId, isGeneral) {
     let msg = null;
@@ -692,15 +739,16 @@ function openMessageDetail(msgId, isGeneral) {
     if (attachSec && attachContent) {
         if (msg.attachment && msg.attachment.data) {
             attachSec.style.display = "block";
+            const attachmentUrl = resolveAttachmentData(msg, isGeneral, activeChildId);
             if (msg.attachment.type === "image") {
                 attachContent.innerHTML = `
                     <div style="text-align:center;">
-                        <img src="${msg.attachment.data}" style="max-width:100%; border-radius:8px; border:1px solid #ddd; max-height:200px; object-fit:contain; cursor:zoom-in;" onclick="this.requestFullscreen && this.requestFullscreen()">
+                        <img src="${attachmentUrl}" style="max-width:100%; border-radius:8px; border:1px solid #ddd; max-height:200px; object-fit:contain; cursor:zoom-in;" onclick="this.requestFullscreen && this.requestFullscreen()">
                         <p style="font-size:0.75rem; color:#888; margin-top:4px;">انقر على الصورة لتكبيرها</p>
                     </div>`;
             } else if (msg.attachment.type === "pdf") {
                 attachContent.innerHTML = `
-                    <a href="${msg.attachment.data}" download="${msg.attachment.name || 'document.pdf'}" style="display:flex; align-items:center; gap:8px; background:#f5f5f5; border:1px solid #e0e0e0; border-radius:6px; padding:10px 14px; text-decoration:none; color:#2196f3; font-weight:600; font-size:0.9rem; transition:background 0.2s;">
+                    <a href="${attachmentUrl}" download="${msg.attachment.name || 'document.pdf'}" style="display:flex; align-items:center; gap:8px; background:#f5f5f5; border:1px solid #e0e0e0; border-radius:6px; padding:10px 14px; text-decoration:none; color:#2196f3; font-weight:600; font-size:0.9rem; transition:background 0.2s;">
                         <span>📎</span><span>تحميل المرفق: ${msg.attachment.name || 'ملف PDF'}</span>
                     </a>`;
             } else {
