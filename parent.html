@@ -349,6 +349,35 @@
         .p-welcome-text h3 { font-size: 1rem; font-weight: 700; }
         .p-welcome-text p  { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
 
+        .p-rank-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(197, 168, 128, 0.2);
+            border: 1px solid var(--gold-main);
+            color: var(--gold-light);
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        .p-rank-badge:hover {
+            transform: translateY(-1px) scale(1.02);
+            background: rgba(197, 168, 128, 0.35);
+        }
+
+        .p-stars-container {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .p-stars-container:hover {
+            transform: scale(1.05);
+            background: rgba(197, 168, 128, 0.28) !important;
+            border-color: var(--gold-main) !important;
+        }
+
         .p-btn-logout {
             background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.2);
@@ -930,13 +959,16 @@
                     <div class="p-avatar">👤</div>
                     <div class="p-welcome-text">
                         <h3 id="p-welcome-name">مرحباً، ولي الأمر</h3>
-                        <p id="p-parent-phone-display"></p>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+                            <p id="p-parent-phone-display" style="margin: 0;"></p>
+                            <span id="p-stars-rank" class="p-rank-badge">🛡️ متابع مستجد</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="p-stars-container" style="background: rgba(197, 168, 128, 0.18); border: 1px solid var(--accent-color); border-radius: var(--radius-md); padding: 6px 12px; display: flex; align-items: center; gap: 6px; color: var(--accent-color); font-weight: 600; font-size: 0.88rem; box-shadow: 0 0 10px rgba(197,168,128,0.1); border-color: rgba(197,168,128,0.5);">
-                        <i data-lucide="star" style="width: 15px; height: 15px; fill: var(--accent-color); color: var(--accent-color);"></i>
+                    <div class="p-stars-container" onclick="showEngagementStarsInfo()" style="background: rgba(197, 168, 128, 0.18); border: 1px solid var(--gold-main); border-radius: var(--radius-md); padding: 6px 12px; display: flex; align-items: center; gap: 6px; color: var(--gold-main); font-weight: 600; font-size: 0.88rem; box-shadow: 0 0 10px rgba(197,168,128,0.1); border-color: rgba(197,168,128,0.5);">
+                        <i data-lucide="star" style="width: 15px; height: 15px; fill: var(--gold-main); color: var(--gold-main);"></i>
                         <span id="p-stars-count">0</span> نجمة
                     </div>
                     <button class="p-btn-logout" onclick="parentLogout()" title="تسجيل الخروج">

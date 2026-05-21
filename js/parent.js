@@ -258,6 +258,13 @@ function renderHome() {
     const countEl = document.getElementById("p-stars-count");
     if (countEl) countEl.textContent = starCount;
 
+    const rankInfo = getParentRank(starCount);
+    const rankEl = document.getElementById("p-stars-rank");
+    if (rankEl) {
+        rankEl.textContent = rankInfo.text;
+        rankEl.style.color = rankInfo.color;
+    }
+
     // إظهار قسم الأبناء فقط إذا كان هناك أكثر من طالب
     const siblingsSection = document.getElementById("siblings-section");
     if (siblingsSection) {
@@ -305,6 +312,11 @@ function switchChild(studentId) {
     renderSiblingTabs();
     renderChildData(studentId);
     lucide.createIcons();
+
+    // مكافأة تفاعل ولي الأمر عند تبديل الأبناء لمراجعة تفاصيل حضورهم
+    if (parentSession && parentSession.parentPhone) {
+        awardParentEngagementStar("attendance_check", parentSession.parentPhone);
+    }
 }
 
 // رسم بيانات الطالب المحدد
@@ -361,6 +373,11 @@ function toggleArchiveCollapse() {
     } else {
         listEl.style.display = "flex";
         if (chevronEl) chevronEl.style.transform = "rotate(180deg)";
+
+        // مكافأة تفاعل ولي الأمر عند مراجعة أرشيف الحضور التاريخي الكامل لأول مرة في الجلسة
+        if (parentSession && parentSession.parentPhone) {
+            awardParentEngagementStar("attendance_check", parentSession.parentPhone);
+        }
     }
 }
 
@@ -709,6 +726,11 @@ function openMessageDetail(msgId, isGeneral) {
 
     if (!msg) return;
 
+    // مكافأة تفاعل ولي الأمر عند فتح وقراءة تفاصيل رسالة أو إعلان
+    if (parentSession && parentSession.parentPhone) {
+        awardParentEngagementStar("read_msg", parentSession.parentPhone, { messageId: msgId });
+    }
+
     // تحديث فوري للقوائم والشارات قبل فتح المودال مباشرة
     if (activeChildId) {
         const student = allStudents.find(s => String(s.id) === String(activeChildId));
@@ -961,14 +983,171 @@ function setLogoImage() {
 // ==========================================
 let canvasAnimId = null;
 
+// حاسب رتبة ولي الأمر بناء على عدد النجوم
+function getParentRank(starCount) {
+    const stars = starCount || 0;
+    if (stars <= 5) return { text: "🛡️ متابع مستجد", color: "var(--gold-light)" };
+    if (stars <= 15) return { text: "🤝 ولي أمر متعاون", color: "#85e3b3" }; // أخضر فاتح جميل
+    if (stars <= 30) return { text: "🚀 ولي أمر مبادر", color: "#ffd460" }; // ذهبي مشع
+    if (stars <= 50) return { text: "👑 ولي أمر متميز", color: "#f39c12" }; // برتقالي ملكي
+    return { text: "🌟 ولي أمر مثالي", color: "#f1c40f" }; // أصفر مشع
+}
+
+// عرض معلومات النجوم والتفاعل عند الضغط على كرت النجوم
+function showEngagementStarsInfo() {
+    const info = `✨ نظام النجوم التفاعلي لأولياء الأمور ✨\n\n` +
+                 `تفاعل يومياً مع التطبيق لترقية رتبتك والحصول على أوسمة جديدة:\n` +
+                 `• أول دخول للتطبيق يومياً: +1 نجمة ⭐\n` +
+                 `• تصفح/تحديث التطبيق (كل 3 مرات): +1 نجمة ⭐ (بحد أقصى 3 نجوم يومياً)\n` +
+                 `• قراءة إعلان أو رسالة جديدة: +1 نجمة ⭐ (بحد أقصى 3 نجوم يومياً)\n` +
+                 `• متابعة حضور الأبناء والأرشيف: +1 نجمة ⭐ (بحد أقصى نجمتين يومياً)\n\n` +
+                 `🏆 الرتب المتاحة:\n` +
+                 `• 0 - 5 نجوم: 🛡️ متابع مستجد\n` +
+                 `• 6 - 15 نجمة: 🤝 ولي أمر متعاون\n` +
+                 `• 16 - 30 نجمة: 🚀 ولي أمر مبادر\n` +
+                 `• 31 - 50 نجمة: 👑 ولي أمر متميز\n` +
+                 `• 51+ نجمة: 🌟 ولي أمر مثالي`;
+    alert(info);
+}
+
+function awardParentEngagementStar(reason, phone, extra = {}) {
+    if (!phone) return;
+    const statsKey = `ajaweed_parent_stats_${phone}`;
+    let stats = {
+        lastLoginDate: "",
+        loginCountToday: 0,
+        starCount: 0,
+        dailyOpensCount: 0,
+        dailyReadsCount: 0,
+        dailyAttendanceChecks: 0,
+        dailyOpensStarsAwarded: 0,
+        dailyReadsStarsAwarded: 0,
+        dailyAttendanceStarsAwarded: 0,
+        readMessageIds: []
+    };
+
+    try {
+        const stored = localStorage.getItem(statsKey);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            stats = { ...stats, ...parsed };
+        }
+    } catch (e) {
+        console.error("خطأ في قراءة إحصائيات التفاعل:", e);
+    }
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    // إذا تغير اليوم، نقوم بتصفير العدادات اليومية
+    if (stats.lastLoginDate !== todayStr) {
+        stats.lastLoginDate = todayStr;
+        stats.loginCountToday = 0;
+        stats.dailyOpensCount = 0;
+        stats.dailyReadsCount = 0;
+        stats.dailyAttendanceChecks = 0;
+        stats.dailyOpensStarsAwarded = 0;
+        stats.dailyReadsStarsAwarded = 0;
+        stats.dailyAttendanceStarsAwarded = 0;
+        // ملاحظة: لا نصفر readMessageIds لكي لا يحصل على نجوم لنفس الرسالة مرة أخرى في الغد
+    }
+
+    let starAwarded = 0;
+    let description = "";
+
+    if (reason === "login") {
+        // تم التعامل معها في triggerParentGamification عند أول دخول لليوم
+    } else if (reason === "app_open") {
+        if (!stats.dailyOpensCount) stats.dailyOpensCount = 0;
+        stats.dailyOpensCount++;
+        // كل 3 فتحات تعطي نجمة واحدة، بحد أقصى 3 نجوم يومياً
+        if (stats.dailyOpensCount % 3 === 0 && (stats.dailyOpensStarsAwarded || 0) < 3) {
+            starAwarded = 1;
+            stats.dailyOpensStarsAwarded = (stats.dailyOpensStarsAwarded || 0) + 1;
+            description = "متابعتك اليومية المستمرة للتطبيق تمنحك نجماً إضافياً!";
+        }
+    } else if (reason === "read_msg") {
+        const msgId = extra.messageId;
+        if (msgId) {
+            if (!stats.readMessageIds) stats.readMessageIds = [];
+            // التحقق من أن الرسالة لم تُكافئ من قبل
+            if (!stats.readMessageIds.includes(String(msgId))) {
+                stats.readMessageIds.push(String(msgId));
+                // المكافأة إذا لم يتم تجاوز الحد اليومي (3 نجوم)
+                if ((stats.dailyReadsStarsAwarded || 0) < 3) {
+                    starAwarded = 1;
+                    stats.dailyReadsStarsAwarded = (stats.dailyReadsStarsAwarded || 0) + 1;
+                    description = "شكراً لاهتمامك بقراءة تحديثات المدرسة وإعلاناتها!";
+                }
+            }
+        }
+    } else if (reason === "attendance_check") {
+        if (!stats.dailyAttendanceChecks) stats.dailyAttendanceChecks = 0;
+        stats.dailyAttendanceChecks++;
+        // كل فحصين يعطي نجمة واحدة، بحد أقصى نجمتين يومياً
+        if (stats.dailyAttendanceChecks % 2 === 0 && (stats.dailyAttendanceStarsAwarded || 0) < 2) {
+            starAwarded = 1;
+            stats.dailyAttendanceStarsAwarded = (stats.dailyAttendanceStarsAwarded || 0) + 1;
+            description = "رائع! حرصك على متابعة انضباط حضور أبنائك يمنحك نجماً جديداً!";
+        }
+    }
+
+    if (starAwarded > 0) {
+        stats.starCount = (stats.starCount || 0) + starAwarded;
+
+        // حفظ البيانات
+        try {
+            localStorage.setItem(statsKey, JSON.stringify(stats));
+        } catch (e) {}
+
+        // تحديث الواجهة
+        const countEl = document.getElementById("p-stars-count");
+        if (countEl) countEl.textContent = stats.starCount;
+
+        const rankInfo = getParentRank(stats.starCount);
+        const rankEl = document.getElementById("p-stars-rank");
+        if (rankEl) {
+            rankEl.textContent = rankInfo.text;
+            rankEl.style.color = rankInfo.color;
+        }
+
+        // إظهار الاحتفال
+        setTimeout(() => {
+            showRewardModal(description || "حصلت على نجمة تفاعل تشجيعية جديدة!", stats.starCount);
+        }, 300);
+    } else {
+        // تحديث فقط في حال تغيرت العدادات دون الحصول على نجمة لضمان استمرارية الحفظ
+        try {
+            localStorage.setItem(statsKey, JSON.stringify(stats));
+        } catch (e) {}
+    }
+}
+
 function triggerParentGamification(parentPhone) {
     if (!parentPhone) return;
     const statsKey = `ajaweed_parent_stats_${parentPhone}`;
-    let stats = { lastLoginDate: "", loginCountToday: 0, starCount: 0 };
+    let stats = {
+        lastLoginDate: "",
+        loginCountToday: 0,
+        starCount: 0,
+        dailyOpensCount: 0,
+        dailyReadsCount: 0,
+        dailyAttendanceChecks: 0,
+        dailyOpensStarsAwarded: 0,
+        dailyReadsStarsAwarded: 0,
+        dailyAttendanceStarsAwarded: 0,
+        readMessageIds: []
+    };
     
     try {
         const stored = localStorage.getItem(statsKey);
-        if (stored) stats = JSON.parse(stored);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            stats = { ...stats, ...parsed };
+        }
     } catch (e) {
         console.error("خطأ في قراءة إحصائيات التفاعل:", e);
     }
@@ -999,17 +1178,26 @@ function triggerParentGamification(parentPhone) {
         // أول دخول في هذا اليوم الجديد
         stats.loginCountToday = 1;
         stats.lastLoginDate = todayStr;
-        stats.starCount = (stats.starCount || 0) + 1; // زيادة النجوم
+        
+        // تصفير العدادات اليومية للأنشطة
+        stats.dailyOpensCount = 0;
+        stats.dailyReadsCount = 0;
+        stats.dailyAttendanceChecks = 0;
+        stats.dailyOpensStarsAwarded = 0;
+        stats.dailyReadsStarsAwarded = 0;
+        stats.dailyAttendanceStarsAwarded = 0;
+
+        stats.starCount = (stats.starCount || 0) + 1; // زيادة النجوم لدخول اليوم الأول
         rewardStar = true;
 
         if (daysDiff === -1) {
-            greeting = "أهلاً بك ، أنت ولي أمر رائع";
+            greeting = "أهلاً بك ، أنت ولي أمر رائع ومتابع متميز لأبنائك!";
         } else if (daysDiff === 1) {
-            greeting = "أهلاً بك ، مر يوم واحد ياغالي ما زرتنا";
+            greeting = "أهلاً بك مجدداً! يسعدنا جداً متابعتك اليومية المستمرة لأبنائك.";
         } else if (daysDiff === 2) {
-            greeting = "أهلاً بك ، مر يومين ياغالي ما زرتنا لا تحرمنا من متابعتك";
+            greeting = "أهلاً بك ، مر يومين يا غالي ما زرتنا، لا تحرمنا من متابعتك وحرصك!";
         } else {
-            greeting = "أهلاً بك ، مر وقت طويل ياغالي ما زرتنا , اشتقنا لزيارتك ومتابعتك";
+            greeting = "أهلاً بك ، مر وقت طويل يا غالي ما زرتنا، اشتقنا لمتابعتك وتفاعلك معنا!";
         }
     }
 
@@ -1022,12 +1210,23 @@ function triggerParentGamification(parentPhone) {
     const countEl = document.getElementById("p-stars-count");
     if (countEl) countEl.textContent = stats.starCount;
 
-    // إظهار نافذة المكافأة إذا حصل على نجمة جديدة اليوم
+    // تحديث الرتبة في لوحة المعلومات
+    const rankInfo = getParentRank(stats.starCount);
+    const rankEl = document.getElementById("p-stars-rank");
+    if (rankEl) {
+        rankEl.textContent = rankInfo.text;
+        rankEl.style.color = rankInfo.color;
+    }
+
+    // إظهار نافذة المكافأة إذا حصل على نجمة دخول اليوم الجديد
     if (rewardStar) {
         setTimeout(() => {
             showRewardModal(greeting, stats.starCount);
         }, 800);
     }
+
+    // تشغيل مكافأة تصفح التطبيق وفتحه
+    awardParentEngagementStar("app_open", parentPhone);
 }
 
 function showRewardModal(greeting, starCount) {
@@ -1036,9 +1235,16 @@ function showRewardModal(greeting, starCount) {
 
     const titleEl = document.getElementById("p-reward-title");
     const countEl = document.getElementById("p-reward-star-count");
+    const descEl = document.getElementById("p-reward-desc");
 
     if (titleEl) titleEl.textContent = greeting;
     if (countEl) countEl.textContent = starCount;
+
+    const rankInfo = getParentRank(starCount);
+    if (descEl) {
+        descEl.innerHTML = `أنت قدوة في اهتمامك ومتابعتك لأبنائك. لقد حصلت على نجمة تشجيعية جديدة!<br>` +
+                           `<span style="display:inline-block; margin-top:8.px; font-weight:bold; color:var(--accent-color);">رتبتك الحالية: ${rankInfo.text}</span>`;
+    }
 
     modal.style.display = "flex";
     
