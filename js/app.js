@@ -338,17 +338,93 @@ function renderLogs() {
     });
 }
 
+let helperSearchQuery = "";
+let helperFilter = "all";
+
+// تطبيع النص العربي للبحث المرن (تجاهل الهمزات والتاء المربوطة والألف المقصورة)
+function normalizeArabic(text) {
+    if (!text) return "";
+    return text
+        .toString()
+        .replace(/[أإآا]/g, "ا")
+        .replace(/ة/g, "ه")
+        .replace(/ى/g, "ي")
+        .trim()
+        .toLowerCase();
+}
+
+// تغيير قيمة الفلتر للمساعدين السريعين
+function setHelperFilter(filterType) {
+    helperFilter = filterType;
+    
+    // تحديث التبويب النشط بصرياً
+    document.querySelectorAll(".helper-filter-tabs .filter-tab").forEach(tab => {
+        tab.classList.remove("active");
+    });
+    
+    const activeTab = document.getElementById(`btn-filter-${filterType === 'not_installed' ? 'not-installed' : filterType}`);
+    if (activeTab) activeTab.classList.add("active");
+    
+    renderQuickTestUsers();
+}
+
+// تغيير نص البحث للمساعدين السريعين
+function onHelperSearchChange(value) {
+    helperSearchQuery = value;
+    renderQuickTestUsers();
+}
+
 // رندرة أزرار التبديل السريع للمستخدمين بجانب الموبايل
 function renderQuickTestUsers() {
     const container = document.getElementById("quick-test-users");
+    if (!container) return;
     container.innerHTML = "";
 
-    students.forEach(s => {
+    // تصفية الطلاب بناءً على البحث والفلتر النشط
+    const query = normalizeArabic(helperSearchQuery);
+    
+    const filtered = students.filter(s => {
+        // فلترة بالتبويب
+        if (helperFilter === "installed" && s.status !== "installed") return false;
+        if (helperFilter === "not_installed" && s.status === "installed") return false;
+        
+        // فلترة بالبحث
+        if (query) {
+            const nameNorm = normalizeArabic(s.name);
+            const idNorm = normalizeArabic(s.id);
+            return nameNorm.includes(query) || idNorm.includes(query);
+        }
+        
+        return true;
+    });
+
+    // تحديث شارة العدد الكلي
+    const countBadge = document.getElementById("helpers-count");
+    if (countBadge) {
+        countBadge.textContent = `${filtered.length} طالب`;
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="helper-no-results">
+                <span>🔍 لا توجد نتائج مطابقة</span>
+                <span style="font-size: 0.65rem; color: #999;">جرب البحث بكلمة أخرى أو تغيير التصفية</span>
+            </div>
+        `;
+        return;
+    }
+
+    // لتجنب إرهاق المتصفح والحفاظ على المظهر الأنيق والمختصر، نعرض أول 24 طالباً فقط
+    const MAX_DISPLAY = 24;
+    const toDisplay = filtered.slice(0, MAX_DISPLAY);
+
+    toDisplay.forEach(s => {
         const btn = document.createElement("button");
         btn.className = `btn-helper-user ${s.id === currentStudentId ? 'active' : ''}`;
         
         let indicator = s.status === 'installed' ? '🟢' : '🔴';
         btn.textContent = `${indicator} ${s.name.split(' ')[0]}`;
+        btn.title = `${s.name} (${s.id})`;
         
         btn.onclick = () => {
             currentStudentId = s.id;
@@ -356,11 +432,27 @@ function renderQuickTestUsers() {
             
             // اهتزاز بصري خفيف للهاتف ليدل على التبديل
             const phone = document.getElementById("phone-frame");
-            phone.classList.add("shake-anim");
-            setTimeout(() => phone.classList.remove("shake-anim"), 400);
+            if (phone) {
+                phone.classList.add("shake-anim");
+                setTimeout(() => phone.classList.remove("shake-anim"), 400);
+            }
         };
         container.appendChild(btn);
     });
+
+    // إذا كان هناك طلاب آخرين لم يتم عرضهم، نضع شارة تدل على ذلك
+    if (filtered.length > MAX_DISPLAY) {
+        const moreBadge = document.createElement("div");
+        moreBadge.style.width = "100%";
+        moreBadge.style.textAlign = "center";
+        moreBadge.style.fontSize = "0.7rem";
+        moreBadge.style.color = "#888";
+        moreBadge.style.marginTop = "6px";
+        moreBadge.style.borderTop = "1px dashed rgba(0,0,0,0.05)";
+        moreBadge.style.paddingTop = "6px";
+        moreBadge.textContent = `+ وعدد ${filtered.length - MAX_DISPLAY} طالب آخرين (استخدم البحث أعلاه للوصول إليهم)`;
+        container.appendChild(moreBadge);
+    }
 }
 
 // ==========================================================================

@@ -326,8 +326,25 @@
                 
                 <!-- Helper Quick Access list to easily test different users -->
                 <div class="simulator-helpers">
-                    <h3>💡 اختبار سريع للهواتف المختلفة:</h3>
+                    <div class="helpers-header">
+                        <h3>💡 اختبار سريع للهواتف المختلفة:</h3>
+                        <span class="helpers-badge" id="helpers-count">0 طالب</span>
+                    </div>
                     <p>اختر أحد الطلاب لمحاكاة جهازه واستقبال إشعاراته فورياً:</p>
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="helpers-controls">
+                        <div class="helper-search-wrapper">
+                            <input type="text" id="helper-search-input" placeholder="ابحث باسم الطالب..." oninput="onHelperSearchChange(this.value)">
+                            <span class="search-icon"><i data-lucide="search"></i></span>
+                        </div>
+                        <div class="helper-filter-tabs">
+                            <button class="filter-tab active" id="btn-filter-all" onclick="setHelperFilter('all')">الكل</button>
+                            <button class="filter-tab" id="btn-filter-installed" onclick="setHelperFilter('installed')">🟢 نشط</button>
+                            <button class="filter-tab" id="btn-filter-not-installed" onclick="setHelperFilter('not_installed')">🔴 غير نشط</button>
+                        </div>
+                    </div>
+
                     <div class="helper-buttons" id="quick-test-users">
                         <!-- Populated dynamically -->
                     </div>
