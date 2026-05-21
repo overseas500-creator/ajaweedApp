@@ -2,6 +2,106 @@
 // مدرسة الأجاويد الأولى المتوسطة
 
 // ==========================================================================
+// 0. نظام قفل لوحة الإدارة بالرمز السري (Admin PIN Lock)
+// ==========================================================================
+
+const ADMIN_PIN          = "125140";          // الرمز السري للإدارة
+const ADMIN_SESSION_KEY  = "ajaweed_admin_session";
+const ADMIN_SESSION_HOURS = 8;                 // مدة الجلسة بالساعات
+
+let pinBuffer = ""; // الأرقام المدخلة حتى الآن
+
+// التحقق من جلسة إدارية نشطة
+function isAdminSessionValid() {
+    try {
+        const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+        if (!raw) return false;
+        const session = JSON.parse(raw);
+        const elapsed = Date.now() - session.loginTime;
+        return elapsed < ADMIN_SESSION_HOURS * 3600 * 1000;
+    } catch { return false; }
+}
+
+// حفظ جلسة المشرف
+function saveAdminSession() {
+    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ loginTime: Date.now() }));
+}
+
+// تحديث نقاط مؤشر الإدخال
+function updatePinDots() {
+    const dots = document.querySelectorAll(".pin-dot");
+    dots.forEach((dot, i) => {
+        if (i < pinBuffer.length) {
+            dot.style.background = "#c5a880";
+            dot.style.borderColor = "#c5a880";
+            dot.style.transform = "scale(1.15)";
+        } else {
+            dot.style.background = "transparent";
+            dot.style.borderColor = "rgba(197,168,128,0.5)";
+            dot.style.transform = "scale(1)";
+        }
+    });
+}
+
+// ضغط رقم على لوحة المفاتيح
+function pinPress(digit) {
+    if (pinBuffer.length >= 6) return;
+    pinBuffer += digit;
+    updatePinDots();
+
+    if (pinBuffer.length === 6) {
+        setTimeout(checkPin, 120); // تأخير بسيط لرؤية آخر نقطة
+    }
+}
+
+// حذف آخر رقم
+function pinDelete() {
+    if (pinBuffer.length === 0) return;
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots();
+}
+
+// مسح الكل
+function pinClear() {
+    pinBuffer = "";
+    updatePinDots();
+    document.getElementById("pin-error").style.display = "none";
+}
+
+// التحقق من الرمز
+function checkPin() {
+    if (pinBuffer === ADMIN_PIN) {
+        // ✅ صحيح — فتح اللوحة
+        saveAdminSession();
+        const overlay = document.getElementById("admin-pin-overlay");
+        overlay.classList.add("pin-unlocking");
+        setTimeout(() => { overlay.style.display = "none"; }, 400);
+    } else {
+        // ❌ خطأ — اهتزاز + رسالة
+        const card = document.getElementById("pin-keypad").parentElement;
+        card.classList.add("pin-shake");
+        setTimeout(() => card.classList.remove("pin-shake"), 500);
+
+        const errorEl = document.getElementById("pin-error");
+        errorEl.style.display = "block";
+        setTimeout(() => { errorEl.style.display = "none"; }, 3000);
+
+        // مسح البافر للمحاولة من جديد
+        pinBuffer = "";
+        updatePinDots();
+    }
+}
+
+// دعم لوحة المفاتيح الفعلية (keyboard)
+document.addEventListener("keydown", (e) => {
+    const overlay = document.getElementById("admin-pin-overlay");
+    if (!overlay || overlay.style.display === "none") return;
+    if (e.key >= "0" && e.key <= "9") pinPress(e.key);
+    else if (e.key === "Backspace") pinDelete();
+    else if (e.key === "Escape")    pinClear();
+});
+
+// ==========================================================================
 // 1. إدارة البيانات والاتصال المباشر (State & Local Storage)
 // ==========================================================================
 
@@ -13,6 +113,16 @@ let currentAttachment = null; // المرفق الحالي (صورة أو PDF)
 
 // تحميل البيانات عند بدء تشغيل المنصة
 document.addEventListener("DOMContentLoaded", () => {
+
+    // --- فحص الجلسة الإدارية ---
+    const overlay = document.getElementById("admin-pin-overlay");
+    if (isAdminSessionValid()) {
+        // الجلسة نشطة — أخفِ شاشة القفل مباشرة
+        if (overlay) overlay.style.display = "none";
+    }
+    // إذا لم تكن الجلسة صالحة تبقى شاشة القفل ظاهرة
+    // وسيتم تحميل البيانات بعد فتح القفل (initDatabase تعمل دائماً)
+
     initDatabase();
     updateLiveClock();
     setInterval(updateLiveClock, 1000);
