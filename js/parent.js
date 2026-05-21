@@ -364,6 +364,17 @@ function toggleArchiveCollapse() {
     }
 }
 
+// دالة لاستخراج وقت الوصول فقط بدون التاريخ لتقديمه بشكل مبسط
+function extractTimeOnly(dateTimeStr) {
+    if (!dateTimeStr) return "";
+    const parts = dateTimeStr.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        // e.g. "2026-01-21 07:17 ص" -> "07:17 ص"
+        return parts.slice(1).join(" ");
+    }
+    return dateTimeStr;
+}
+
 function renderAttendanceArchive(student) {
     const listEl = document.getElementById("p-archive-list");
     if (!listEl) return;
@@ -386,9 +397,18 @@ function renderAttendanceArchive(student) {
         const delayBadge = (record.status === "delayed" || record.status === "late") && record.delay
             ? `<span style="margin-right:4px; background:rgba(243,156,18,0.15); color:#f39c12; font-size:0.72rem; padding:1px 5px; border-radius:4px;">${record.delay} د.</span>`
             : "";
+        
+        let labelShow = cfg.label;
+        if (record.time && (record.status === "present" || record.status === "delayed" || record.status === "late")) {
+            const arrivalTime = extractTimeOnly(record.time);
+            if (arrivalTime) {
+                labelShow += ` - وقت الوصول الساعة ${arrivalTime}`;
+            }
+        }
+
         return `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); border-radius:8px; padding:7px 10px; border-right:3px solid ${cfg.color};">
             <span style="font-size:0.78rem; color:var(--muted);">${record.date}</span>
-            <span style="display:flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; color:${cfg.color};">${cfg.icon} ${cfg.label}${delayBadge}</span>
+            <span style="display:flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; color:${cfg.color};">${cfg.icon} ${labelShow}${delayBadge}</span>
         </div>`;
     }).join("");
 
@@ -420,7 +440,15 @@ function renderAttendanceCard(student) {
 
     const cfg = configs[att] || configs.none;
     card.classList.add(cfg.cls);
-    label.textContent = cfg.icon + " " + cfg.text;
+
+    let labelText = cfg.icon + " " + cfg.text;
+    if (student.attendanceTime && (att === "present" || att === "delayed" || att === "late")) {
+        const arrivalTime = extractTimeOnly(student.attendanceTime);
+        if (arrivalTime) {
+            labelText += ` - وقت الوصول الساعة ${arrivalTime}`;
+        }
+    }
+    label.textContent = labelText;
     
     if (student.attendanceTime && att !== "none") {
         desc.innerHTML = `${cfg.desc}<br><span style="display:inline-block; margin-top:8px; font-size:0.9em; opacity:0.85;">📅 وقت رصد الحضور: ${student.attendanceTime}</span>`;
