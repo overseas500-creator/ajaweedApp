@@ -1378,3 +1378,366 @@ function mapExcelGrade(gradeVal, divisionVal) {
     const arabicGrades = ["الأول", "الثاني", "الثالث"];
     return `الصف ${arabicGrades[gradeNum - 1]} المتوسط - ${divLetter}`;
 }
+
+// ==========================================================================
+// 9. رصد الحضور اليومي الذكي من 3 ملفات إكسل (Daily Attendance Importer)
+// ==========================================================================
+
+let dailyAttendanceFiles = { early: null, absent: null, late: null };
+
+function openDailyAttendanceModal() {
+    resetDailyAttendanceFiles();
+    document.getElementById("daily-attendance-modal").classList.add("active");
+}
+
+function closeDailyAttendanceModal() {
+    document.getElementById("daily-attendance-modal").classList.remove("active");
+    resetDailyAttendanceFiles();
+}
+
+function resetDailyAttendanceFiles() {
+    dailyAttendanceFiles = { early: null, absent: null, late: null };
+    
+    // إعادة تعيين عناصر حقول اختيار الملفات
+    const inputs = ['early', 'absent', 'late'];
+    inputs.forEach(type => {
+        const input = document.getElementById(`file-${type}`);
+        if (input) input.value = '';
+        
+        // إعادة بطاقة الرفع لشكلها الطبيعي
+        const card = document.getElementById(`card-${type}`);
+        if (card) {
+            card.className = `daily-upload-card ${type}`;
+            // إزالة زر حذف الملف المرفق إن وجد
+            const btn = card.querySelector('.btn-remove-daily-file');
+            if (btn) btn.remove();
+        }
+        
+        // إعادة تسمية الزر
+        const statusLabel = document.getElementById(`status-${type}`);
+        if (statusLabel) {
+            statusLabel.innerHTML = `<i data-lucide="upload" style="width: 12px; height: 12px;"></i>اختر الملف...`;
+        }
+    });
+    lucide.createIcons();
+}
+
+function triggerDailyFileSelect(type) {
+    document.getElementById(`file-${type}`).click();
+}
+
+function handleDailyFileSelect(event, type) {
+    event.stopPropagation(); // منع نشر الحدث حتى لا يتم الضغط على الكارد مجدداً
+    const file = event.target.files[0];
+    if (!file) return;
+
+    dailyAttendanceFiles[type] = file;
+
+    // تحديث نمط بطاقة الرفع
+    const card = document.getElementById(`card-${type}`);
+    if (card) {
+        card.classList.add('has-file');
+        
+        // منع التكرار في إضافة زر الحذف
+        let btn = card.querySelector('.btn-remove-daily-file');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.className = 'btn-remove-daily-file';
+            btn.title = 'إلغاء المرفق';
+            btn.innerHTML = `<i data-lucide="x"></i>`;
+            btn.onclick = function(e) {
+                removeDailyFile(type, e);
+            };
+            card.appendChild(btn);
+        }
+    }
+
+    // تحديث شارة الرفع باسم وحجم الملف المختار
+    const statusLabel = document.getElementById(`status-${type}`);
+    if (statusLabel) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const shortName = file.name.length > 15 ? file.name.substring(0, 12) + "..." : file.name;
+        statusLabel.innerHTML = `<i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> ${shortName} (${fileSizeMB} م.ب)`;
+    }
+    
+    lucide.createIcons();
+}
+
+function removeDailyFile(type, event) {
+    if (event) event.stopPropagation(); // منع نشر الحدث
+    
+    dailyAttendanceFiles[type] = null;
+    
+    const input = document.getElementById(`file-${type}`);
+    if (input) input.value = '';
+    
+    const card = document.getElementById(`card-${type}`);
+    if (card) {
+        card.classList.remove('has-file');
+        const btn = card.querySelector('.btn-remove-daily-file');
+        if (btn) btn.remove();
+    }
+    
+    const statusLabel = document.getElementById(`status-${type}`);
+    if (statusLabel) {
+        statusLabel.innerHTML = `<i data-lucide="upload" style="width: 12px; height: 12px;"></i>اختر الملف...`;
+    }
+    lucide.createIcons();
+}
+
+function processDailyAttendance() {
+    const promises = [];
+    const types = ['early', 'absent', 'late'];
+    
+    // التحقق من رفع ملف واحد على الأقل للرصد
+    if (!dailyAttendanceFiles.early && !dailyAttendanceFiles.absent && !dailyAttendanceFiles.late) {
+        showToast("error", "يرجى تحديد ملف واحد على الأقل لرصد الحضور والغياب.");
+        return;
+    }
+
+    showToast("success", "جاري قراءة ملفات الإكسل ورصد الحالات...");
+
+    types.forEach(type => {
+        const file = dailyAttendanceFiles[type];
+        if (file) {
+            promises.push(new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        if (!sheetName) {
+                            resolve({ type: type, rows: [] });
+                            return;
+                        }
+                        const worksheet = workbook.Sheets[sheetName];
+                        // تحويل الورقة إلى مصفوفة صفوف
+                        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+                        resolve({ type: type, rows: rows });
+                    } catch (err) {
+                        reject(new Error(`خطأ في قراءة ملف ${type}: ${err.message}`));
+                    }
+                };
+                reader.onerror = () => reject(new Error(`خطأ في رفع وقراءة ملف ${type}`));
+                reader.readAsArrayBuffer(file);
+            }));
+        } else {
+            promises.push(Promise.resolve({ type: type, rows: null }));
+        }
+    });
+
+    Promise.all(promises).then(results => {
+        let updatedCount = 0;
+        let importedCount = 0;
+        let stats = { early: 0, absent: 0, late: 0 };
+
+        results.forEach(res => {
+            const { type, rows } = res;
+            if (!rows || rows.length === 0) return;
+
+            // الصفوف والأعمدة حسب المخطط:
+            // عمود A (مؤشر 0): اليوم الدراسي / تاريخ الغياب
+            // عمود B (مؤشر 1): اسم الطالب
+            // عمود C (مؤشر 2): رقم الطالب (الهوية الوطنية)
+            // عمود D (مؤشر 3): الصف
+            // عمود E (مؤشر 4): الفصل
+            // عمود F (مؤشر 5): رقم الهاتف
+            // عمود J (مؤشر 9): مقدار التأخر (فقط لملف المتأخرين)
+
+            rows.forEach((row, idx) => {
+                // تخطي صفوف العناوين والتوصيفات المبدئية
+                if (idx === 0) {
+                    const firstRowStr = JSON.stringify(row).toLowerCase();
+                    if (firstRowStr.includes("الهوية") || firstRowStr.includes("الاسم") || firstRowStr.includes("الطالب") || firstRowStr.includes("حضور") || firstRowStr.includes("غياب")) {
+                        return; 
+                    }
+                }
+
+                const rawName = row[1];
+                const rawId = row[2];
+                const rawGrade = row[3];
+                const rawDivision = row[4];
+                const rawMobile = row[5];
+
+                if (!rawName || !rawId) {
+                    return; // تخطي الصفوف الفارغة أو غير المكتملة
+                }
+
+                const studentId = String(rawId).trim();
+                const studentName = String(rawName).trim();
+
+                // تجنب تكرار العناوين إن وجدت في صفوف متأخرة
+                if (studentId === "رقم الطالب" || studentName === "اسم الطالب") {
+                    return;
+                }
+
+                // 1. تطبيع رقم الهاتف
+                let mobile = String(rawMobile || '').trim();
+                if (mobile.startsWith("966")) {
+                    mobile = "0" + mobile.substring(3);
+                } else if (mobile.startsWith("5")) {
+                    mobile = "0" + mobile;
+                }
+                if (!mobile || !/^05\d{8}$/.test(mobile)) {
+                    mobile = "05" + Math.floor(10000000 + Math.random() * 90000000); 
+                }
+
+                // 2. استخلاص اسم الأب لولي الأمر
+                const nameParts = studentName.split(/\s+/);
+                let parentName = "أبو " + nameParts[0];
+                if (nameParts.length > 2) {
+                    parentName = nameParts.slice(1).join(" ");
+                } else if (nameParts.length === 2) {
+                    parentName = nameParts[1];
+                }
+
+                // 3. مواءمة الصف الدراسي والفصل
+                const grade = mapExcelGrade(rawGrade, rawDivision);
+
+                // 4. تحليل وحساب دقائق التأخر
+                let delayMinutes = 0;
+                if (type === "late") {
+                    const rawDelay = row[9]; // عمود J
+                    if (rawDelay !== null && rawDelay !== undefined) {
+                        if (typeof rawDelay === "number") {
+                            // إذا كان مخزن كقيمة عشرية لتنسيق الوقت في إكسل (مثل 0.0111 لـ 16 دقيقة)
+                            if (rawDelay < 1) {
+                                delayMinutes = Math.round(rawDelay * 1440);
+                            } else {
+                                delayMinutes = Math.round(rawDelay);
+                            }
+                        } else {
+                            const delayStr = String(rawDelay).trim();
+                            if (delayStr.includes(":")) {
+                                const parts = delayStr.split(":");
+                                const hours = parseInt(parts[0]) || 0;
+                                const minutes = parseInt(parts[1]) || 0;
+                                delayMinutes = hours * 60 + minutes;
+                            } else {
+                                delayMinutes = parseInt(delayStr) || 0;
+                            }
+                        }
+                    }
+                    if (delayMinutes <= 0) delayMinutes = 15; // قيمة افتراضية كحد أدنى في حال الخطأ
+                }
+
+                // تحديد حالة الحضور الجديدة
+                let attStatus = "present";
+                if (type === "absent") attStatus = "absent";
+                if (type === "late") attStatus = "delayed";
+
+                // تحضير كائن الطالب الجديد بالكامل في حال كان مضافاً لأول مرة
+                const studentObj = {
+                    id: studentId,
+                    name: studentName,
+                    grade: grade,
+                    parentName: parentName,
+                    parentPhone: mobile,
+                    status: Math.random() > 0.4 ? "installed" : "not_installed",
+                    lastActive: Math.random() > 0.3 ? "منذ دقيقتين" : "غير نشط حالياً",
+                    attendance: attStatus,
+                    morningDelayMinutes: delayMinutes,
+                    privateMessages: []
+                };
+
+                // التحقق مما إذا كان الطالب مسجل مسبقاً في الدليل
+                const existingIdx = students.findIndex(s => s.id === studentId);
+                if (existingIdx !== -1) {
+                    // تحديث حالة الحضور فقط ودقائق التأخر للطالب الحالي
+                    students[existingIdx].attendance = attStatus;
+                    students[existingIdx].morningDelayMinutes = delayMinutes;
+                    
+                    // محاكاة إرسال إشعار فوري لولي الأمر إذا كان التطبيق مفعل لديهم
+                    simulateDailyAttendanceNotification(students[existingIdx]);
+                    
+                    updatedCount++;
+                } else {
+                    // إنشاء حساب طالب جديد تلقائياً وإضافته للدليل
+                    students.push(studentObj);
+                    
+                    simulateDailyAttendanceNotification(studentObj);
+                    
+                    importedCount++;
+                }
+
+                if (type === "early") stats.early++;
+                if (type === "absent") stats.absent++;
+                if (type === "late") stats.late++;
+            });
+        });
+
+        // مزامنة البيانات وحفظها محلياً
+        syncData();
+        refreshUI();
+        closeDailyAttendanceModal();
+
+        // تفعيل محاكاة الهاتف لأحد الطلاب النشطين الذين تم رصدهم
+        if (students.length > 0) {
+            const firstInstalled = students.find(s => s.status === "installed" && (s.attendance === "absent" || s.attendance === "delayed")) || students[0];
+            currentStudentId = firstInstalled.id;
+            refreshMobileSimulator();
+        }
+
+        // إظهار تنبيه ملخص إحصائي شامل
+        showToast("success", `تم الرصد بنجاح! حضور مبكر: ${stats.early}، غياب: ${stats.absent}، متأخرين: ${stats.late}. (محدّث: ${updatedCount}، مضاف جديد: ${importedCount})`);
+
+    }).catch(error => {
+        console.error(error);
+        showToast("error", "خطأ أثناء معالجة ملفات الرصد: " + error.message);
+    });
+}
+
+// محاكاة وتوليد إرسال إشعار حضور وغياب فوري تفاعلي لولي الأمر (Inbox integration)
+function simulateDailyAttendanceNotification(student) {
+    const timestamp = new Date().toISOString();
+    let text = "";
+    let logTitle = "";
+    
+    if (student.attendance === "present") {
+        logTitle = "حضور الطالب";
+        text = `نفيدكم علماً بتحضير ابنكم (${student.name}) حاضراً اليوم في موعد حضور مبكر ومثالي. نشكر لكم اهتمامكم بانضباطه.`;
+    } else if (student.attendance === "absent") {
+        logTitle = "غياب الطالب";
+        text = `تنبيه: نفيدكم علماً بغياب ابنكم (${student.name}) عن اليوم الدراسي اليوم. يرجى تقديم مبرر الغياب لإدارة المدرسة في أقرب وقت.`;
+    } else if (student.attendance === "delayed") {
+        logTitle = "تأخر صباحي";
+        text = `تنبيه: نفيدكم علماً بتأخر ابنكم (${student.name}) عن طابور الصباح اليوم بمقدار (${student.morningDelayMinutes}) دقيقة. نأمل الحرص والمتابعة لتفادي ذلك مستقبلاً.`;
+    }
+
+    const newMsg = {
+        id: "msg_" + Date.now() + Math.random().toString(36).substr(2, 5),
+        text: text,
+        date: timestamp,
+        read: false,
+        attachment: null
+    };
+
+    if (!student.privateMessages) {
+        student.privateMessages = [];
+    }
+    student.privateMessages.unshift(newMsg);
+
+    // تسجيل الإشعار في سجل الإرسال الإداري اليومي العام
+    saveNotifLog({
+        type: "attendance",
+        subType: student.attendance,
+        title: logTitle,
+        recipientName: student.name,
+        text: text,
+        timestamp: timestamp,
+        attachment: null
+    });
+    
+    sentNotificationsTodayCount++;
+    localStorage.setItem("ajaweed_sent_count", sentNotificationsTodayCount.toString());
+
+    // إطلاق محاكاة الهاتف المنبثقة فورياً إذا كان هذا هو الطالب المفتوح حالياً بالجوال
+    if (student.id === currentStudentId) {
+        triggerSimulatedPushNotification(logTitle, text);
+    } else {
+        const mobileBadge = document.getElementById("mobile-badge");
+        if (mobileBadge) mobileBadge.style.display = "block";
+    }
+}
+

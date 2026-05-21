@@ -247,6 +247,10 @@
                             <h2>دليل الطلاب وحالة التطبيق</h2>
                         </div>
                         <div class="header-actions" style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-import-daily" onclick="openDailyAttendanceModal()" style="background-color: var(--card-bg); border: 1px solid var(--gold-primary, #c5a880); color: var(--gold-primary, #c5a880); transition: all 0.2s; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 0.9rem;" onmouseover="this.style.backgroundColor='rgba(197, 168, 128, 0.1)';" onmouseout="this.style.backgroundColor='var(--card-bg)';">
+                                <i data-lucide="calendar-range" style="width: 16px; height: 16px;"></i>
+                                <span>رصد الحضور اليومي (Excel)</span>
+                            </button>
                             <button class="btn btn-secondary btn-import" onclick="triggerExcelImport()" style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); transition: all 0.2s; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 0.9rem;" onmouseover="this.style.borderColor='var(--gold-primary)'; this.style.color='var(--gold-primary)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-primary)';">
                                 <i data-lucide="file-spreadsheet" style="width: 16px; height: 16px;"></i>
                                 <span>استيراد من إكسل</span>
@@ -587,6 +591,78 @@
                     <button type="submit" class="btn btn-primary">حفظ الطالب</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Daily Attendance Import Modal -->
+    <div class="modal-overlay" id="daily-attendance-modal">
+        <div class="modal-card" style="width: 750px; max-width: 95%;">
+            <div class="modal-header">
+                <h3><i data-lucide="calendar-range"></i> رصد الحضور اليومي الذكي من قوائم Excel</h3>
+                <button class="modal-close" onclick="closeDailyAttendanceModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem; line-height: 1.6;">
+                    قم برفع ملفات الحضور والغياب والتأخر اليومية الصادرة من نظام التحضير الذاتي لمطابقتها تلقائياً وتحديث حالة دليل المدرسة فورياً. يمكنك رفع ملف واحد أو أكثر بالتوازي وسيقوم التطبيق بدمجها بذكاء.
+                </p>
+
+                <!-- Grid of 3 Upload Cards -->
+                <div class="attendance-upload-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+                    
+                    <!-- 1. Early Attendance Card -->
+                    <div class="daily-upload-card early" id="card-early" onclick="triggerDailyFileSelect('early')" style="border: 2px dashed rgba(15, 81, 50, 0.3); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; background: rgba(15, 81, 50, 0.02); transition: all 0.25s ease;">
+                        <div class="upload-icon-wrapper" style="background: rgba(15, 81, 50, 0.1); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #0f5132;">
+                            <i data-lucide="smile" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: #0f5132; margin-bottom: 6px;">الحضور المبكر</h4>
+                        <p style="font-size: 0.75rem; color: #666; margin-bottom: 12px;">ملف الطلاب الحاضرين مبكراً</p>
+                        <span class="upload-status-label" id="status-early" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: rgba(0,0,0,0.05); color: #666; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="upload" style="width: 12px; height: 12px;"></i>اختر الملف...
+                        </span>
+                        <input type="file" id="file-early" accept=".xlsx, .xls" style="display: none;" onchange="handleDailyFileSelect(event, 'early')">
+                    </div>
+
+                    <!-- 2. Absent Card -->
+                    <div class="daily-upload-card absent" id="card-absent" onclick="triggerDailyFileSelect('absent')" style="border: 2px dashed rgba(220, 53, 69, 0.3); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; background: rgba(220, 53, 69, 0.02); transition: all 0.25s ease;">
+                        <div class="upload-icon-wrapper" style="background: rgba(220, 53, 69, 0.1); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #dc3545;">
+                            <i data-lucide="frown" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: #dc3545; margin-bottom: 6px;">الغياب اليومي</h4>
+                        <p style="font-size: 0.75rem; color: #666; margin-bottom: 12px;">ملف الطلاب الغائبين عن المدرسة</p>
+                        <span class="upload-status-label" id="status-absent" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: rgba(0,0,0,0.05); color: #666; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="upload" style="width: 12px; height: 12px;"></i>اختر الملف...
+                        </span>
+                        <input type="file" id="file-absent" accept=".xlsx, .xls" style="display: none;" onchange="handleDailyFileSelect(event, 'absent')">
+                    </div>
+
+                    <!-- 3. Late Card -->
+                    <div class="daily-upload-card late" id="card-late" onclick="triggerDailyFileSelect('late')" style="border: 2px dashed rgba(197, 168, 128, 0.4); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; background: rgba(197, 168, 128, 0.02); transition: all 0.25s ease;">
+                        <div class="upload-icon-wrapper" style="background: rgba(197, 168, 128, 0.15); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #b09165;">
+                            <i data-lucide="clock" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: #b09165; margin-bottom: 6px;">التأخر الصباحي</h4>
+                        <p style="font-size: 0.75rem; color: #666; margin-bottom: 12px;">ملف الطلاب المتأخرين صباحاً</p>
+                        <span class="upload-status-label" id="status-late" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: rgba(0,0,0,0.05); color: #666; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="upload" style="width: 12px; height: 12px;"></i>اختر الملف...
+                        </span>
+                        <input type="file" id="file-late" accept=".xlsx, .xls" style="display: none;" onchange="handleDailyFileSelect(event, 'late')">
+                    </div>
+
+                </div>
+
+                <!-- Info summary box -->
+                <div class="helper-text-info" style="margin-bottom: 10px; font-size: 0.82rem; line-height: 1.5; background: rgba(197, 168, 128, 0.08); border-right: 3px solid var(--accent-color); padding: 12px; border-radius: 4px;">
+                    <i data-lucide="info" style="color: var(--accent-color); vertical-align: middle; margin-left: 5px;"></i>
+                    سيقوم النظام بمطابقة هويات الطلاب تلقائياً وتحديث حالاتهم. في حال استيراد طالب غير مسجل بالدليل، <strong>سيتم إنشاء ملف تعريف طالب جديد له تلقائياً وتطبيع رقم هاتفه</strong> لتلقي الإشعارات.
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; background: #f8faf9; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-secondary" onclick="closeDailyAttendanceModal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="processDailyAttendance()" style="background-color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="check-circle-2"></i>
+                    <span>حفظ وتحديث الحضور اليومي</span>
+                </button>
+            </div>
         </div>
     </div>
 
