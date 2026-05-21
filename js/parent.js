@@ -1038,14 +1038,25 @@ async function pollCloudSync() {
     }
 }
 
+// دالة فك ترميز حروف اليونيكود غير الأسكي المسترجعة من السحابة لضمان عرض الحروف العربية بشكل سليم 100%
+function safeDecodeUnicode(str) {
+    if (!str) return "";
+    return str.replace(/~u([0-9a-fA-F]{4})/g, (match, hex) => {
+        return String.fromCharCode(parseInt(hex, 16));
+    });
+}
+
 function safeParseKeyValue(raw) {
     if (!raw) return null;
     let s = raw.trim();
-    // استرجاع النقطتين (:) المستبدلتين بـ (~) قبل محاولة التحليل لتفادي أخطاء خادم IIS
-    s = s.replace(/~/g, ':');
     if (s.startsWith('"') && s.endsWith('"')) {
         try { s = JSON.parse(s); } catch {}
     }
+    // 1. فك ترميز حروف اليونيكود أولاً لتجنب استبدال مدات ~u بعلامات نقطتين
+    s = safeDecodeUnicode(s);
+    // 2. استرجاع النقطتين (:) المستبدلتين بـ (~) للملفات القديمة المتوافقة عكسياً
+    s = s.replace(/~/g, ':');
+    
     try { return JSON.parse(s); } catch { return null; }
 }
 

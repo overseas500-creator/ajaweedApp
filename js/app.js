@@ -2402,11 +2402,23 @@ function simulateDailyAttendanceNotification(student) {
 const CLOUD_APP_KEY = "x3odkkjc";
 const CLOUD_API_UPDATE = `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_APP_KEY}`;
 
+// دالة ترميز مخصصة لحروف اليونيكود غير الأسكي إلى شكل آمن ومتوافق 100% مع خوادم IIS ومنع التلف في قاعدة البيانات
+function safeEscapeUnicode(str) {
+    if (!str) return "";
+    return str.split('').map(char => {
+        const code = char.charCodeAt(0);
+        if (code > 127) {
+            return "~u" + code.toString(16).padStart(4, '0');
+        }
+        return char;
+    }).join('');
+}
+
 // مزامنة حالة طالب محدد إلى السحابة
 function syncStudentToCloud(student) {
     if (!student || !student.id) return;
     
-    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (210 حروف كحد أقصى)
+    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (نسمح الآن بـ 300 حرف بفضل معامل الاستعلام)
     const messages = (student.privateMessages || student.messages || []).slice(0, 1).map(m => {
         let attachment = null;
         if (m.attachment) {
@@ -2417,7 +2429,7 @@ function syncStudentToCloud(student) {
         }
         return {
             id: m.id,
-            txt: (m.text || m.message || "").substring(0, 30), // تقصير النص لتفادي تخطي الحد الأقصى للمسار
+            txt: (m.text || m.message || "").substring(0, 300), // تقصير معقول للنص
             dt: m.date,
             rd: m.read || false,
             att: attachment
@@ -2437,10 +2449,12 @@ function syncStudentToCloud(student) {
     };
 
     const key = `s_${student.id}`;
-    // استبدال النقطتين (:) بعلامة المد (~) لتفادي رفض خادم IIS لمسارات URL
-    const value = JSON.stringify(payload).replace(/:/g, '~');
+    // تحويل الكائن إلى نص JSON وترميزه ليكون متوافقاً تماماً مع خوادم IIS
+    const jsonStr = JSON.stringify(payload);
+    const escapedValue = safeEscapeUnicode(jsonStr);
     
-    const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
+    // إرسال البيانات عبر معامل الاستعلام ?value لتجنب أي مشاكل في طول المسار أو الرموز الخاصة
+    const url = `${CLOUD_API_UPDATE}/${key}?value=${encodeURIComponent(escapedValue)}`;
     
     fetch(url, { method: "POST" })
         .then(res => {
@@ -2462,18 +2476,19 @@ function syncGeneralMessagesToCloud() {
         }
         return {
             id: m.id,
-            t: (m.title || "إعلان عام").substring(0, 20),
-            txt: (m.text || m.body || m.message || "").substring(0, 30),
+            t: (m.title || "إعلان عام").substring(0, 100),
+            txt: (m.text || m.body || m.message || "").substring(0, 300),
             dt: m.date,
             att: attachment
         };
     });
 
     const key = "gen_msgs";
-    // استبدال النقطتين (:) بعلامة المد (~) لتفادي رفض خادم IIS لمسارات URL
-    const value = JSON.stringify(list).replace(/:/g, '~');
+    const jsonStr = JSON.stringify(list);
+    const escapedValue = safeEscapeUnicode(jsonStr);
     
-    const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
+    // إرسال البيانات عبر معامل الاستعلام ?value لتجنب أي مشاكل في طول المسار أو الرموز الخاصة
+    const url = `${CLOUD_API_UPDATE}/${key}?value=${encodeURIComponent(escapedValue)}`;
     
     fetch(url, { method: "POST" })
         .then(res => {
