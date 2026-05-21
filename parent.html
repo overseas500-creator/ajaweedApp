@@ -680,6 +680,18 @@
         .p-tab-view { padding: 12px 16px; display: none; }
         .p-tab-view.active-view { display: block; }
 
+        #p-msg-collapse-content {
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            max-height: 2000px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        #p-msg-collapse-content.collapsed {
+            max-height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none;
+        }
+
         /* بطاقات الرسائل */
         .p-msg-card {
             border-radius: var(--radius-sm);
@@ -958,28 +970,39 @@
 
             <!-- الرسائل والإعلانات -->
             <div class="p-messages-section">
-                <div class="p-msg-tabs">
-                    <button class="p-nav-tab active" id="p-tab-btn-private" onclick="switchParentTab('private')">
-                        <i data-lucide="bell"></i>
-                        إشعارات خاصة
-                        <span class="p-badge" id="p-private-badge">0</span>
-                    </button>
-                    <button class="p-nav-tab" id="p-tab-btn-general" onclick="switchParentTab('general')">
-                        <i data-lucide="megaphone"></i>
-                        إعلانات المدرسة
-                        <span class="p-badge" id="p-general-badge">0</span>
-                    </button>
-                </div>
-
-                <div class="p-tab-view active-view" id="p-view-private">
-                    <div id="p-private-feed">
-                        <!-- تُملأ ديناميكياً -->
+                <!-- عنوان قابل للضغط للفتح والإغلاق -->
+                <div class="p-messages-header" onclick="toggleMessagesDropdown()" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: rgba(15, 81, 50, 0.05); border-bottom: 1px solid var(--border); transition: background 0.2s; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--green-main); font-size: 0.95rem;">
+                        <i data-lucide="mail" style="width: 17px; height: 17px; color: var(--green-main);"></i>
+                        <span>💬 الإشعارات والرسائل الواردة</span>
                     </div>
+                    <i data-lucide="chevron-down" id="p-msg-toggle-icon" style="width: 18px; height: 18px; color: var(--muted); transition: transform 0.25s ease;"></i>
                 </div>
 
-                <div class="p-tab-view" id="p-view-general">
-                    <div id="p-general-feed">
-                        <!-- تُملأ ديناميكياً -->
+                <div id="p-msg-collapse-content">
+                    <div class="p-msg-tabs">
+                        <button class="p-nav-tab active" id="p-tab-btn-private" onclick="switchParentTab('private')">
+                            <i data-lucide="bell"></i>
+                            إشعارات خاصة
+                            <span class="p-badge" id="p-private-badge">0</span>
+                        </button>
+                        <button class="p-nav-tab" id="p-tab-btn-general" onclick="switchParentTab('general')">
+                            <i data-lucide="megaphone"></i>
+                            إعلانات المدرسة
+                            <span class="p-badge" id="p-general-badge">0</span>
+                        </button>
+                    </div>
+
+                    <div class="p-tab-view active-view" id="p-view-private">
+                        <div id="p-private-feed">
+                            <!-- تُملأ ديناميكياً -->
+                        </div>
+                    </div>
+
+                    <div class="p-tab-view" id="p-view-general">
+                        <div id="p-general-feed">
+                            <!-- تُملأ ديناميكياً -->
+                        </div>
                     </div>
                 </div>
             </div>

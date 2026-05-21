@@ -485,7 +485,12 @@ function renderPrivateMessages(student) {
     if (!feed) return;
 
     const msgList = student.privateMessages || student.messages || [];
-    const messages = msgList.slice().reverse();
+    // ترتيب تنازلي حسب التاريخ (الأحدث أولاً) لتظهر الرسائل الجديدة في الأعلى
+    const messages = msgList.slice().sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+    });
     const unread   = messages.filter(m => !m.read).length;
 
     if (badge) {
@@ -534,7 +539,12 @@ function renderGeneralMessages() {
         badge.style.display = unreadCount > 0 ? "flex" : "none";
     }
 
-    const msgs = generalMessages.slice().reverse();
+    // ترتيب تنازلي حسب التاريخ (الأحدث أولاً) لتظهر الإعلانات الجديدة في الأعلى
+    const msgs = generalMessages.slice().sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+    });
     if (msgs.length === 0) {
         feed.innerHTML = `
             <div class="p-empty-state">
@@ -800,6 +810,30 @@ function switchParentTab(tabName) {
     const btn  = document.getElementById("p-tab-btn-" + tabName);
     if (view) { view.style.display = "block"; view.classList.add("active-view"); }
     if (btn)  btn.classList.add("active");
+    
+    // إذا كان قسم الرسائل مطوياً، نفتحه تلقائياً عند الضغط على أي تبويب لمشاهدة المحتوى
+    const content = document.getElementById("p-msg-collapse-content");
+    const icon = document.getElementById("p-msg-toggle-icon");
+    if (content && content.classList.contains("collapsed")) {
+        content.classList.remove("collapsed");
+        if (icon) icon.style.transform = "rotate(0deg)";
+    }
+}
+
+// دالة لفتح وإغلاق (طيّ) قسم الإشعارات والرسائل بالضغط على العنوان في الأعلى
+function toggleMessagesDropdown() {
+    const content = document.getElementById("p-msg-collapse-content");
+    const icon = document.getElementById("p-msg-toggle-icon");
+    if (!content) return;
+    
+    const isCollapsed = content.classList.contains("collapsed");
+    if (isCollapsed) {
+        content.classList.remove("collapsed");
+        if (icon) icon.style.transform = "rotate(0deg)";
+    } else {
+        content.classList.add("collapsed");
+        if (icon) icon.style.transform = "rotate(-90deg)";
+    }
 }
 
 // ==========================================
