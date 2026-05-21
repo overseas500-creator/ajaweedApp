@@ -1,0 +1,12 @@
+{
+  "name": "ajaweed-app",
+  "version": "1.0.0",
+  "description": "نظام استقبال وإرسال إشعارات الحضور بمدرسة الأجاويد الأولى المتوسطة",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y browser-sync start --server --files \"*.html, css/*.css, js/*.js\""
+  },
+  "keywords": [],
+  "author": "Ajaweed School",
+  "license": "ISC"
+}

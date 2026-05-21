@@ -1,0 +1,2148 @@
+/* ==========================================================================
+   نظام تصميم تطبيق الأجاويد - مدرسة الأجاويد الأولى المتوسطة
+   هوية بصرية فاخرة: أخضر زمردي ملكي وذهب مطفي مع نمط عصري زجاجي (Glassmorphism)
+   ========================================================================== */
+
+:root {
+    --primary-color: #0f5132;        /* أخضر زمردي ملكي */
+    --primary-light: #157347;       /* أخضر زمردي مضيء */
+    --primary-dark: #082d1c;        /* أخضر زمردي داكن جداً */
+    --accent-color: #c5a880;         /* ذهبي ملكي برونزي */
+    --accent-light: #d8c3a5;        /* ذهبي فاتح */
+    --accent-dark: #9a7d56;         /* ذهبي برونزي غامق */
+    --danger-color: #dc3545;        /* أحمر غياب وتنبيهات */
+    --warning-color: #ffc107;       /* أصفر تأخر */
+    --success-color: #198754;       /* أخضر نجاح وتفعيل */
+    --bg-dark: #121814;             /* خلفية معتمة راقية */
+    --card-bg-dark: rgba(26, 38, 31, 0.85); /* بطاقة غامقة زجاجية */
+    --bg-light: #f8faf9;            /* خلفية فاتحة */
+    --card-bg-light: #ffffff;
+    --text-dark: #1a2520;
+    --text-light: #f1f5f3;
+    --border-light: rgba(220, 224, 222, 0.8);
+    --border-dark: rgba(197, 168, 128, 0.15); /* إطار ذهبي شفاف */
+    --font-ar: 'Tajawal', sans-serif;
+    --font-en: 'Outfit', sans-serif;
+    --shadow-premium: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 0 20px rgba(197, 168, 128, 0.25);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 24px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   إعدادات الصفحة العامة (Base Styles)
+   ========================================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-ar);
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* تخصيص شريط التمرير */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f3f2;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-dark);
+}
+
+/* ==========================================================================
+   شريط الرأس والمقدمة الهيدر (Header Styles)
+   ========================================================================== */
+
+.app-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+    border-bottom: 3px solid var(--accent-color);
+    color: var(--text-light);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.logo-circle {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 2px solid var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-glow);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.logo-circle:hover {
+    transform: rotate(10deg) scale(1.05);
+}
+
+.logo-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.logo-placeholder-icon {
+    color: var(--accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-placeholder-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.school-titles h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.school-titles h1 span {
+    font-family: var(--font-en);
+    font-size: 1.1rem;
+    background: linear-gradient(120deg, var(--accent-light) 0%, var(--accent-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.school-titles p {
+    font-size: 0.9rem;
+    color: var(--accent-light);
+    font-weight: 300;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.system-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-en);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent-light);
+}
+
+.system-time svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+}
+
+/* ==========================================================================
+   مبوبة التنقل في الهواتف (Mobile View Tabs Switcher)
+   ========================================================================== */
+
+.mobile-tabs {
+    display: none; /* مخفي على الشاشات الكبيرة */
+    background-color: var(--card-bg-light);
+    border-bottom: 1px solid var(--border-light);
+    position: sticky;
+    top: 103px;
+    z-index: 99;
+}
+
+.mobile-tab-btn {
+    flex: 1;
+    padding: 14px 8px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ar);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 3px solid transparent;
+}
+
+.mobile-tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--accent-color);
+    background-color: rgba(15, 81, 50, 0.03);
+}
+
+.mobile-tab-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.mobile-notif-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--danger-color);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+}
+
+/* ==========================================================================
+   التخطيط الرئيسي (Main Layout & Grid)
+   ========================================================================== */
+
+.main-layout {
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    flex-grow: 1;
+}
+
+/* الحالات التفاعلية للظهور والتنقل */
+.admin-dashboard, .mobile-simulator {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ==========================================================================
+   مؤشرات الأداء والإحصائيات (Metrics / Statistics Row)
+   ========================================================================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.stat-card {
+    background-color: var(--card-bg-light);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-premium);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.stat-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.icon-students {
+    background-color: rgba(15, 81, 50, 0.08);
+    color: var(--primary-color);
+}
+.icon-active {
+    background-color: rgba(25, 135, 84, 0.08);
+    color: var(--success-color);
+}
+.icon-inactive {
+    background-color: rgba(220, 53, 69, 0.08);
+    color: var(--danger-color);
+}
+.icon-notifs {
+    background-color: rgba(197, 168, 128, 0.12);
+    color: var(--accent-dark);
+}
+
+.stat-info h3 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.stat-info p {
+    font-family: var(--font-en);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.active-progress-wrapper {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.pct-badge {
+    font-family: var(--font-en);
+    font-size: 0.8rem;
+    font-weight: 700;
+    background-color: var(--success-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 20px;
+}
+
+.progress-bar-bg {
+    width: 120px;
+    height: 6px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--success-color);
+    border-radius: 3px;
+    transition: width 0.8s ease-out;
+}
+
+.animate-pulse-notif::before {
+    background-color: var(--accent-color);
+}
+
+/* ==========================================================================
+   تصميم الألواح والبطاقات (Panels & Cards)
+   ========================================================================== */
+
+.panel {
+    background-color: var(--card-bg-light);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-premium);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header {
+    padding: 16px 24px;
+    background-color: rgba(15, 81, 50, 0.02);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header-icon {
+    color: var(--accent-dark);
+    width: 22px;
+    height: 22px;
+}
+
+.panel-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-body {
+    padding: 24px;
+    flex-grow: 1;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.4fr;
+    gap: 24px;
+    align-items: start;
+}
+
+/* ==========================================================================
+   أزرار و عناصر نماذج الإدخال (Buttons & Form Fields)
+   ========================================================================== */
+
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-group label svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color);
+}
+
+select, input[type="text"], input[type="number"], input[type="tel"], textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #dcdfdc;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ar);
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    background-color: #ffffff;
+    transition: var(--transition);
+    outline: none;
+}
+
+select:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus, textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.1);
+}
+
+.helper-text-info {
+    font-size: 0.78rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.helper-text-info svg {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-dark);
+}
+
+/* أزرار الإشعار التفاعلية (Radio button tags) */
+.notif-types-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 8px;
+    border: 2px solid #e2e5e2;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #555;
+    background-color: #fafbfa;
+    transition: var(--transition);
+    position: relative;
+    user-select: none;
+}
+
+.type-btn input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.type-btn svg {
+    width: 20px;
+    height: 20px;
+    transition: var(--transition);
+}
+
+.type-btn:hover {
+    background-color: #f1f3f1;
+    border-color: #cdd1cd;
+}
+
+.type-btn.active {
+    border-color: var(--accent-color);
+    background-color: rgba(15, 81, 50, 0.04);
+    color: var(--primary-color);
+    box-shadow: 0 4px 10px rgba(197, 168, 128, 0.1);
+}
+
+.type-btn.active svg {
+    transform: scale(1.15);
+    color: var(--accent-dark);
+}
+
+/* حضور وغياب أزرار الراديو */
+.attendance-options-box {
+    background-color: #f6f8f6;
+    border: 1px dashed var(--accent-color);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.attendance-status-radios {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.att-radio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid #dcdfdc;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    background-color: #fff;
+    transition: var(--transition);
+}
+
+.att-radio-btn input {
+    display: none;
+}
+
+.att-radio-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.att-radio-btn:hover {
+    background-color: #f1f3f1;
+}
+
+/* الألوان الخاصة بتحضير الطلاب */
+.att-radio-btn.present.active {
+    background-color: rgba(25, 135, 84, 0.12);
+    color: var(--success-color);
+    border-color: var(--success-color);
+    font-weight: 700;
+}
+.att-radio-btn.absent.active {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+    font-weight: 700;
+}
+.att-radio-btn.delayed.active {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: #b58000;
+    border-color: var(--warning-color);
+    font-weight: 700;
+}
+
+/* إدخال رقم التأخر */
+.input-number-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.input-number-wrapper input {
+    padding-left: 60px;
+    font-family: var(--font-en);
+    font-weight: 600;
+}
+
+.input-suffix {
+    position: absolute;
+    left: 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #666;
+}
+
+/* أزرار الإجراءات */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-family: var(--font-ar);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(15, 81, 50, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(15, 81, 50, 0.3);
+}
+
+.btn-secondary {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.btn-secondary:hover {
+    background-color: #dee2e6;
+}
+
+.btn-reset {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-light);
+    font-size: 0.85rem;
+    padding: 8px 14px;
+}
+
+.btn-reset:hover {
+    background-color: var(--accent-color);
+    color: var(--primary-dark);
+}
+
+.btn-add {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-submit-notif {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.05rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+    box-shadow: 0 6px 15px rgba(15, 81, 50, 0.2);
+}
+
+.btn-submit-notif:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 81, 50, 0.35);
+}
+
+/* ==========================================================================
+   دليل وجدول الطلاب (Directory & Student Table)
+   ========================================================================== */
+
+.directory-toolbar {
+    padding: 16px 24px;
+    background-color: #fafbfa;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    gap: 16px;
+}
+
+.search-box {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-box svg {
+    position: absolute;
+    right: 14px;
+    color: #888;
+    width: 18px;
+    height: 18px;
+}
+
+.search-box input {
+    padding-right: 44px;
+}
+
+.filter-box select {
+    min-width: 160px;
+}
+
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.students-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+    font-size: 0.9rem;
+}
+
+.students-table th {
+    background-color: #f1f4f2;
+    padding: 14px 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-light);
+}
+
+.students-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-light);
+    transition: var(--transition);
+}
+
+.students-table tr:hover td {
+    background-color: rgba(15, 81, 50, 0.02);
+}
+
+/* خلايا الصفوف المخصصة */
+.student-meta-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.student-meta-cell .student-name {
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.student-meta-cell .student-grade {
+    font-size: 0.78rem;
+    color: #666;
+}
+
+.id-code {
+    font-family: var(--font-en);
+    font-weight: 600;
+    background-color: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #495057;
+}
+
+.parent-info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.parent-name {
+    font-weight: 500;
+}
+
+.parent-phone {
+    font-family: var(--font-en);
+    font-size: 0.8rem;
+    color: #666;
+}
+
+/* شارات الحالة وتثبيت التطبيق */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 30px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.status-badge.active {
+    background-color: rgba(25, 135, 84, 0.12);
+    color: var(--success-color);
+}
+
+.status-badge.inactive {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: var(--danger-color);
+}
+
+.status-badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* شارات حضور الجدول */
+.table-att-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: var(--transition);
+}
+
+.table-att-badge:hover {
+    transform: scale(1.05);
+}
+
+.table-att-badge.present {
+    background-color: rgba(25, 135, 84, 0.08);
+    color: var(--success-color);
+    border-color: rgba(25, 135, 84, 0.15);
+}
+
+.table-att-badge.absent {
+    background-color: rgba(220, 53, 69, 0.08);
+    color: var(--danger-color);
+    border-color: rgba(220, 53, 69, 0.15);
+}
+
+.table-att-badge.delayed {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #9a7200;
+    border-color: rgba(255, 193, 7, 0.2);
+}
+
+.table-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dcdfdc;
+    background-color: white;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+}
+
+.btn-action.btn-send-notif {
+    color: var(--primary-color);
+    border-color: rgba(15, 81, 50, 0.2);
+    background-color: rgba(15, 81, 50, 0.02);
+}
+.btn-action.btn-send-notif:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-action.btn-delete {
+    color: var(--danger-color);
+    border-color: rgba(220, 53, 69, 0.2);
+    background-color: rgba(220, 53, 69, 0.02);
+}
+.btn-action.btn-delete:hover {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+/* ==========================================================================
+   سجل الإرسال للغرفة الزمنية اليومية (Dispatcher Timeline Log)
+   ========================================================================== */
+
+.log-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.log-item {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background-color: #fafbfa;
+    border-right: 4px solid #ced4da;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.log-item.att-present {
+    border-right-color: var(--success-color);
+    background-color: rgba(25, 135, 84, 0.02);
+}
+.log-item.att-absent {
+    border-right-color: var(--danger-color);
+    background-color: rgba(220, 53, 69, 0.02);
+}
+.log-item.att-delayed {
+    border-right-color: var(--warning-color);
+    background-color: rgba(255, 193, 7, 0.03);
+}
+.log-item.general {
+    border-right-color: var(--primary-color);
+    background-color: rgba(15, 81, 50, 0.02);
+}
+.log-item.private {
+    border-right-color: var(--accent-color);
+    background-color: rgba(197, 168, 128, 0.04);
+}
+
+.log-item-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.log-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.att-present .log-item-icon { background-color: rgba(25, 135, 84, 0.1); color: var(--success-color); }
+.att-absent .log-item-icon { background-color: rgba(220, 53, 69, 0.1); color: var(--danger-color); }
+.att-delayed .log-item-icon { background-color: rgba(255, 193, 7, 0.15); color: #b58000; }
+.general .log-item-icon { background-color: rgba(15, 81, 50, 0.08); color: var(--primary-color); }
+.private .log-item-icon { background-color: rgba(197, 168, 128, 0.15); color: var(--accent-dark); }
+
+.log-item-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.log-text-box h4 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.log-text-box p {
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 2px;
+}
+
+.log-item-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.log-time-stamp {
+    font-family: var(--font-en);
+    font-size: 0.78rem;
+    color: #888;
+    font-weight: 600;
+}
+
+.log-delivered-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+.log-delivered-badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+.log-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #888;
+    gap: 12px;
+    border: 2px dashed #dee2e6;
+    border-radius: var(--radius-sm);
+}
+
+.log-empty-state svg {
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+}
+
+.log-empty-state p {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   العمود الثاني: محاكي هاتف ذكي للهواتف (Smartphone Mockup Simulator)
+   ========================================================================== */
+
+.simulator-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 120px;
+}
+
+/* قائمة التبديل السريع للمستخدمين */
+.simulator-helpers {
+    background-color: var(--card-bg-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    width: 100%;
+    box-shadow: var(--shadow-premium);
+}
+
+.simulator-helpers h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 6px;
+}
+
+.simulator-helpers p {
+    font-size: 0.78rem;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.helper-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.btn-helper-user {
+    padding: 6px 10px;
+    border-radius: 20px;
+    border: 1.5px solid #dcdfdc;
+    background-color: #ffffff;
+    font-family: var(--font-ar);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-helper-user:hover {
+    background-color: rgba(15, 81, 50, 0.03);
+    border-color: var(--accent-color);
+}
+
+.btn-helper-user.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 3px 8px rgba(15, 81, 50, 0.15);
+}
+
+/* هيكل الهاتف الذكي (iPhone / Android Shape) */
+.smartphone-frame {
+    width: 325px;
+    height: 650px;
+    background-color: #000000;
+    border-radius: 40px;
+    padding: 11px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), 0 0 0 4px #262626;
+    position: relative;
+    user-select: none;
+    transition: transform 0.15s ease-out; /* للاهتزاز البصري */
+}
+
+/* اهتزاز الهاتف عند تلقي إشعار */
+.smartphone-frame.shake-anim {
+    animation: shakePhone 0.4s ease-in-out;
+}
+
+/* الكاميرا والنوتش العلوي */
+.phone-notch {
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 24px;
+    background-color: #000000;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.notch-speaker {
+    width: 35px;
+    height: 4px;
+    background-color: #1a1a1a;
+    border-radius: 4px;
+}
+
+.notch-camera {
+    width: 8px;
+    height: 8px;
+    background-color: #0b112c;
+    border-radius: 50%;
+    border: 1px solid #1a1a1a;
+}
+
+/* شاشة الهاتف الداخلية */
+.phone-screen {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at top right, #112d20 0%, #0d120f 100%);
+    border-radius: 30px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* شريط حالة هاتف المحمول */
+.phone-status-bar {
+    height: 38px;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-family: var(--font-en);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ffffff;
+    z-index: 900;
+}
+
+.status-time {
+    padding-bottom: 2px;
+}
+
+.status-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding-bottom: 2px;
+}
+
+.status-icons svg {
+    width: 12px;
+    height: 12px;
+}
+
+.network-type {
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* لافتة الإشعار المنبثق الفوري (Slide down push banner) */
+.push-notification-banner {
+    position: absolute;
+    top: -120px; /* مخفي في البداية */
+    left: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    padding: 10px 14px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1.5px solid rgba(197, 168, 128, 0.25);
+    transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+}
+
+.push-notification-banner.active {
+    top: 42px; /* ينزلق للأسفل */
+}
+
+.push-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.push-app-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.push-app-logo {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: var(--accent-color);
+    font-size: 0.6rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0.5px solid var(--accent-color);
+}
+
+.push-app-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.push-time {
+    font-size: 0.65rem;
+    color: #888;
+}
+
+.push-body h4 {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #111;
+}
+
+.push-body p {
+    font-size: 0.74rem;
+    color: #333;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.push-handle {
+    width: 32px;
+    height: 4px;
+    background-color: #ccc;
+    border-radius: 4px;
+    align-self: center;
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   شاشات تطبيق هاتف المحمول الداخلية (Screens)
+   ========================================================================== */
+
+.app-screen {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* شاشة الدخول للمحاكاة */
+#screen-login {
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    animation: fadeIn 0.4s ease;
+}
+
+.login-header-logo {
+    text-align: center;
+}
+
+.login-logo-circle {
+    width: 80px;
+    height: 80px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--accent-color);
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(197, 168, 128, 0.15);
+    overflow: hidden;
+}
+
+.login-logo-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.app-logo-placeholder-icon {
+    color: var(--accent-color);
+}
+.app-logo-placeholder-icon svg {
+    width: 42px;
+    height: 42px;
+}
+
+.login-header-logo h2 {
+    color: var(--text-light);
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.login-header-logo h2 span {
+    font-family: var(--font-en);
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.login-header-logo p {
+    color: var(--accent-light);
+    font-size: 0.8rem;
+    font-weight: 300;
+}
+
+.login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.login-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.login-form-group label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--accent-light);
+}
+
+.input-icon-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon-group svg {
+    position: absolute;
+    right: 12px;
+    color: var(--accent-color);
+    width: 16px;
+    height: 16px;
+}
+
+.input-icon-group input {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding-right: 36px;
+    font-size: 0.85rem;
+}
+
+.input-icon-group input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.1);
+}
+
+.login-hints {
+    font-size: 0.7rem;
+    color: #8da397;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.login-hints strong {
+    color: var(--accent-color);
+    font-family: var(--font-en);
+}
+
+.btn-app-primary {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent-color) 100%);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--primary-dark);
+    font-family: var(--font-ar);
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: var(--transition);
+}
+
+.btn-app-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-app-primary svg {
+    width: 16px;
+    height: 16px;
+}
+
+.login-footer {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    margin-top: 10px;
+    line-height: 1.4;
+}
+
+/* ========================================== */
+/* واجهة تطبيق هاتف الطالب الرئيسية (Home App View) */
+/* ========================================== */
+
+#screen-home {
+    padding: 0;
+    animation: fadeIn 0.4s ease;
+}
+
+/* الهيدر العلوي في الهاتف */
+.app-top-header {
+    padding: 42px 16px 14px 16px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-bottom: 1.5px solid var(--border-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar-circle {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%);
+    color: var(--primary-dark);
+    font-weight: 800;
+    font-size: 1.1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(197, 168, 128, 0.15);
+}
+
+.app-user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.app-user-details h3 {
+    font-size: 0.8rem;
+    color: var(--accent-light);
+    font-weight: 700;
+}
+
+.app-user-details span#app-student-name {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 1px;
+}
+
+.app-grade-tag {
+    font-size: 0.65rem;
+    color: var(--accent-color);
+    font-weight: 300;
+}
+
+.btn-app-logout {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #e06666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-app-logout:hover {
+    background-color: rgba(220, 53, 69, 0.2);
+}
+
+.btn-app-logout svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* المحتوى القابل للتمرير داخل الهاتف */
+.app-scroll-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 16px 14px 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* شريط تثبيت التطبيق للتجربة المحاكية */
+.pwa-install-ribbon {
+    background: linear-gradient(135deg, rgba(197, 168, 128, 0.1) 0%, rgba(15, 81, 50, 0.1) 100%);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    animation: bounceInstall 3s infinite;
+}
+
+.pwa-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pwa-icon {
+    color: var(--accent-color);
+}
+.pwa-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.pwa-text h4 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: white;
+}
+
+.pwa-text p {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.2;
+}
+
+.btn-pwa-install {
+    background-color: var(--accent-color);
+    color: var(--primary-dark);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    font-family: var(--font-ar);
+    font-size: 0.68rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-pwa-install:hover {
+    background-color: var(--accent-light);
+}
+
+/* ودجات المحاكاة (Widgets) */
+.app-widget {
+    background-color: var(--card-bg-dark);
+    border: 1.5px solid var(--border-dark);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.widget-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    border-bottom: 1px solid rgba(197, 168, 128, 0.1);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+}
+
+.widget-header svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* بطاقة تحضير الطالب في الموبايل */
+.attendance-card-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.att-status-indicator {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.att-status-indicator svg {
+    width: 22px;
+    height: 22px;
+}
+
+.att-status-indicator.indicator-present {
+    background-color: rgba(25, 135, 84, 0.15);
+    color: #2fb372;
+    border: 1px solid rgba(25, 135, 84, 0.25);
+}
+.att-status-indicator.indicator-absent {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #e04b59;
+    border: 1px solid rgba(220, 53, 69, 0.25);
+}
+.att-status-indicator.indicator-delayed {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+}
+
+.att-status-text h4 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+}
+
+.att-status-text p {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 2px;
+}
+
+/* عداد التأخر الصباحي */
+.delay-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.radial-gauge {
+    position: relative;
+    width: 55px;
+    height: 55px;
+}
+
+.circular-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.circle-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 3.5;
+}
+
+.circle {
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.circular-chart.gold .circle {
+    stroke: var(--accent-color);
+}
+
+.percentage {
+    fill: #fff;
+    font-family: var(--font-ar);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-anchor: middle;
+}
+
+.delay-info-text h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+}
+
+.delay-info-text p {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 1px;
+}
+
+/* شريط تبويب الرسائل داخل الهاتف */
+.app-in-navigation {
+    display: flex;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-nav-tab {
+    flex: 1;
+    padding: 8px 4px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ar);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 6px;
+    transition: var(--transition);
+    position: relative;
+}
+
+.app-nav-tab svg {
+    width: 12px;
+    height: 12px;
+}
+
+.app-nav-tab.active {
+    background-color: var(--accent-color);
+    color: var(--primary-dark);
+}
+
+.app-badge-counter {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-family: var(--font-en);
+    font-size: 0.6rem;
+    font-weight: 700;
+    background-color: var(--danger-color);
+    color: white;
+    min-width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* خلايا صندوق الإشعارات */
+.app-tab-view {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.messages-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message-item-card {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.message-item-card.unread {
+    border-color: rgba(197, 168, 128, 0.4);
+    background-color: rgba(197, 168, 128, 0.03);
+}
+
+.message-item-card.unread::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 6px;
+    height: 6px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+}
+
+.message-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.message-card-top h4 {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--accent-color);
+}
+
+.message-card-date {
+    font-family: var(--font-en);
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.message-item-card p {
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.45;
+}
+
+.message-empty {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+}
+
+.message-empty svg {
+    width: 32px;
+    height: 32px;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+/* شريط الهاتف السفلي */
+.phone-home-indicator {
+    width: 100px;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    margin: 10px auto 4px auto;
+}
+
+/* ==========================================================================
+   صناديق الحوار المودال (Modals & Toast Dialogs)
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(18, 24, 20, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    background-color: var(--card-bg-light);
+    border-radius: var(--radius-md);
+    width: 600px;
+    max-width: 90%;
+    border: 2px solid var(--accent-color);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.modal-overlay.active .modal-card {
+    transform: scale(1);
+}
+
+.modal-header {
+    padding: 16px 24px;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-header h3 svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+}
+
+.modal-close {
+    font-size: 1.8rem;
+    font-weight: 300;
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--accent-color);
+}
+
+.modal-body {
+    padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    background-color: #fafbfa;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* التنبيهات الصغيرة الطائرة (Toast notification in dashboard) */
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 14px 20px;
+    border-radius: var(--radius-sm);
+    border-right: 4px solid var(--accent-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1100;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.toast-notification.active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-notification svg {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-color);
+}
+
+#toast-msg {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   المؤثرات الحركية والتحريكات (Animations & Transitions)
+   ========================================================================== */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+@keyframes shakePhone {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    15% { transform: rotate(-1.5deg) scale(1.01); }
+    30% { transform: rotate(2deg) scale(1.01); }
+    45% { transform: rotate(-2deg) scale(1); }
+    60% { transform: rotate(1.5deg) scale(1); }
+    75% { transform: rotate(-0.5deg) scale(1); }
+}
+
+@keyframes bounceInstall {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* ==========================================================================
+   التوافق مع الشاشات المتنوعة والأجهزة اللوحية (Responsive Styles)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .main-layout {
+        grid-template-columns: 1fr; /* جعل العناصر تصطف طولياً */
+        padding: 16px;
+    }
+    
+    .mobile-tabs {
+        display: flex; /* إظهار مبوبة التبديل في الأجهزة المحمولة */
+    }
+
+    .admin-dashboard {
+        display: none; /* مخفي بالافتراض على الموبايل لتوفير مساحة */
+    }
+
+    .mobile-simulator {
+        display: none;
+    }
+
+    /* إظهار الشاشة النشطة وفقاً للتبويب */
+    .admin-dashboard.active, .mobile-simulator.active {
+        display: flex;
+    }
+
+    .simulator-wrapper {
+        position: static; /* إبطال ميزة الـ sticky */
+        width: 100%;
+    }
+
+    .smartphone-frame {
+        width: 100%; /* تمديد الهاتف ليكون سهل الاستخدام للتقييم */
+        max-width: 360px;
+        height: 680px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr; /* شكل عمودي للوحة التحكم */
+    }
+}
+
+@media (max-width: 600px) {
+    .header-container {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .logo-area {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .school-titles h1 {
+        font-size: 1.3rem;
+    }
+
+    .header-controls {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .notif-types-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .students-table th:nth-child(3), .students-table td:nth-child(3),
+    .students-table th:nth-child(5), .students-table td:nth-child(5) {
+        display: none; /* إخفاء الأعمدة الأقل أهمية على الموبايل الشديد */
+    }
+}

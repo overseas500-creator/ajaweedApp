@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق الأجاويد - منصة إشعارات مدرسة الأجاويد الأولى المتوسطة</title>
+    <!-- Google Fonts: Tajawal & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- PWA Manifest for Apple & Android Installation -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f5132">
+    <!-- Apple Web App Capable tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="الأجاويد">
+    <link rel="apple-touch-icon" href="ajaweed_logo_1779318974019.png">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-area">
+                <div class="logo-circle">
+                    <img id="school-logo-img" src="" alt="شعار مدرسة الأجاويد" style="display: none;">
+                    <div id="logo-placeholder" class="logo-placeholder-icon"><i data-lucide="graduation-cap"></i></div>
+                </div>
+                <div class="school-titles">
+                    <h1>تطبيق الأجاويد <span>ajaweed</span></h1>
+                    <p>المنصة الإدارية الذكية لمدرسة الأجاويد الأولى المتوسطة</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-secondary btn-reset" onclick="resetDatabase()" title="إعادة ضبط البيانات للوضع الافتراضي">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span>إعادة تعيين النظام</span>
+                </button>
+                <div class="system-time">
+                    <i data-lucide="clock"></i>
+                    <span id="live-clock">--:--:--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile View Tabs Switcher (Visible only on small screens) -->
+    <div class="mobile-tabs">
+        <button class="mobile-tab-btn active" onclick="switchMobileTab('dashboard')">
+            <i data-lucide="layout-dashboard"></i>
+            <span>لوحة التحكم الإدارية</span>
+        </button>
+        <button class="mobile-tab-btn" onclick="switchMobileTab('simulator')">
+            <i data-lucide="smartphone"></i>
+            <span>تطبيق هاتف ولي الأمر</span>
+            <span class="mobile-notif-dot" id="mobile-badge" style="display: none;"></span>
+        </button>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-layout">
+        
+        <!-- ============================================== -->
+        <!-- SECTION 1: ADMIN DASHBOARD (RIGHT/LEFT SPLIT)  -->
+        <!-- ============================================== -->
+        <section class="admin-dashboard active" id="admin-view">
+            
+            <!-- Statistics Row -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon icon-students"><i data-lucide="users"></i></div>
+                    <div class="stat-info">
+                        <h3>إجمالي الطلاب</h3>
+                        <p id="stat-total-students">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-active"><i data-lucide="smartphone"></i></div>
+                    <div class="stat-info">
+                        <h3>مستخدمو التطبيق (نشط)</h3>
+                        <div class="active-progress-wrapper">
+                            <p id="stat-active-users">0</p>
+                            <span class="pct-badge" id="stat-active-pct">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="stat-active-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-inactive"><i data-lucide="smartphone-off"></i></div>
+                    <div class="stat-info">
+                        <h3>غير مفعلين للتطبيق</h3>
+                        <p id="stat-inactive-users">0</p>
+                    </div>
+                </div>
+                <div class="stat-card animate-pulse-notif">
+                    <div class="stat-icon icon-notifs"><i data-lucide="bell-ring"></i></div>
+                    <div class="stat-info">
+                        <h3>إشعارات مرسلة اليوم</h3>
+                        <p id="stat-sent-today">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Dashboard Panel -->
+            <div class="dashboard-grid">
+                
+                <!-- Dispatcher Form Column -->
+                <div class="panel dispatch-panel">
+                    <div class="panel-header">
+                        <i data-lucide="send" class="panel-header-icon"></i>
+                        <h2>إرسال إشعار فوري جديد</h2>
+                    </div>
+                    <div class="panel-body">
+                        <form id="dispatch-form" onsubmit="handleSendNotification(event)">
+                            
+                            <!-- Recipient Selection -->
+                            <div class="form-group">
+                                <label for="notif-recipient"><i data-lucide="user-check"></i> المستلم (الطالب):</label>
+                                <select id="notif-recipient" onchange="onRecipientChange()" required>
+                                    <option value="" disabled selected>اختر الطالب المستلم...</option>
+                                    <option value="all">📢 إرسال للجميع (إعلان عام بمدرسة الأجاويد)</option>
+                                    <!-- Options will be populated dynamically -->
+                                </select>
+                            </div>
+
+                            <!-- Notification Type -->
+                            <div class="form-group">
+                                <label><i data-lucide="sliders"></i> نوع الإشعار:</label>
+                                <div class="notif-types-grid">
+                                    <label class="type-btn active" id="type-label-attendance">
+                                        <input type="radio" name="notif-type" value="attendance" checked onchange="onNotifTypeChange()">
+                                        <i data-lucide="calendar-check"></i>
+                                        <span>حضور وغياب</span>
+                                    </label>
+                                    <label class="type-btn" id="type-label-general">
+                                        <input type="radio" name="notif-type" value="general" onchange="onNotifTypeChange()">
+                                        <i data-lucide="megaphone"></i>
+                                        <span>إعلان عام</span>
+                                    </label>
+                                    <label class="type-btn" id="type-label-private">
+                                        <input type="radio" name="notif-type" value="private" onchange="onNotifTypeChange()">
+                                        <i data-lucide="mail"></i>
+                                        <span>رسالة خاصة</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Attendance Specific Fields -->
+                            <div id="attendance-fields" class="attendance-options-box">
+                                <div class="form-group">
+                                    <label><i data-lucide="check-circle-2"></i> حالة الحضور والغياب للتحضير:</label>
+                                    <div class="attendance-status-radios">
+                                        <label class="att-radio-btn present active">
+                                            <input type="radio" name="att-status" value="present" checked onchange="onAttendanceStatusChange()">
+                                            <i data-lucide="smile"></i> حاضـر
+                                        </label>
+                                        <label class="att-radio-btn absent">
+                                            <input type="radio" name="att-status" value="absent" onchange="onAttendanceStatusChange()">
+                                            <i data-lucide="frown"></i> غائـب
+                                        </label>
+                                        <label class="att-radio-btn delayed">
+                                            <input type="radio" name="att-status" value="delayed" onchange="onAttendanceStatusChange()">
+                                            <i data-lucide="clock"></i> متأخـر
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Minutes Late (Visible only when Delayed is chosen) -->
+                                <div id="minutes-late-group" class="form-group" style="display: none;">
+                                    <label for="minutes-late"><i data-lucide="hourglass"></i> عدد دقائق التأخر الصباحي:</label>
+                                    <div class="input-number-wrapper">
+                                        <input type="number" id="minutes-late" min="1" max="180" value="15" oninput="onMinutesLateChange()">
+                                        <span class="input-suffix">دقيقة</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- General Specific Fields (Title) -->
+                            <div id="general-fields" class="form-group" style="display: none;">
+                                <label for="notif-title"><i data-lucide="type"></i> عنوان الإعلان:</label>
+                                <input type="text" id="notif-title" placeholder="مثال: موعد اختبارات الفصل الثاني">
+                            </div>
+
+                            <!-- Text Message Area -->
+                            <div class="form-group">
+                                <label for="notif-text"><i data-lucide="file-text"></i> نص الإشعار الصادر:</label>
+                                <textarea id="notif-text" rows="4" required placeholder="سيتم إنشاء الرسالة تلقائياً بناءً على القوالب، ويمكنك التعديل عليها بحرية..."></textarea>
+                                <div class="helper-text-info">
+                                    <i data-lucide="info"></i> سيقوم النظام بإرسال هذا النص كإشعار فوري وتثبيته في سجل الطالب.
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-submit-notif">
+                                <i data-lucide="send-horizontal"></i>
+                                <span>إرسال الإشعار فـوراً</span>
+                            </button>
+
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Directory Column -->
+                <div class="panel directory-panel">
+                    <div class="panel-header">
+                        <div class="header-main-title">
+                            <i data-lucide="users" class="panel-header-icon"></i>
+                            <h2>دليل الطلاب وحالة التطبيق</h2>
+                        </div>
+                        <div class="header-actions" style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-import" onclick="triggerExcelImport()" style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); transition: all 0.2s; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 0.9rem;" onmouseover="this.style.borderColor='var(--gold-primary)'; this.style.color='var(--gold-primary)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-primary)';">
+                                <i data-lucide="file-spreadsheet" style="width: 16px; height: 16px;"></i>
+                                <span>استيراد من إكسل</span>
+                            </button>
+                            <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelImport(event)">
+                            <button class="btn btn-primary btn-add" onclick="openAddStudentModal()">
+                                <i data-lucide="user-plus"></i>
+                                <span>طالب جديد</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="directory-toolbar">
+                        <div class="search-box">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="student-search" placeholder="ابحث باسم الطالب أو رقم الهوية..." oninput="filterStudents()">
+                        </div>
+                        <div class="filter-box">
+                            <select id="status-filter" onchange="filterStudents()">
+                                <option value="all">جميع الحالات</option>
+                                <option value="installed">🟢 نشط (تم التنزيل)</option>
+                                <option value="not_installed">🔴 غير نشط (لم ينزل)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="students-table">
+                            <thead>
+                                <tr>
+                                    <th>الطالب / الصف</th>
+                                    <th>هوية الطالب</th>
+                                    <th>ولي الأمر / الهاتف</th>
+                                    <th>حالة التطبيق</th>
+                                    <th>تحضير اليوم</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Recent Notifications Log (Full width) -->
+            <div class="panel log-panel">
+                <div class="panel-header">
+                    <i data-lucide="history" class="panel-header-icon"></i>
+                    <h2>سجل الإرسال الفوري لليوم</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="log-timeline" id="notification-logs">
+                        <!-- Populated dynamically -->
+                        <div class="log-empty-state">
+                            <i data-lucide="clipboard-list"></i>
+                            <p>لا توجد إشعارات مرسلة اليوم حتى الآن. قم بإرسال أول إشعار!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- ============================================== -->
+        <!-- SECTION 2: INTERACTIVE MOBILE SMARTPHONE APP    -->
+        <!-- ============================================== -->
+        <section class="mobile-simulator" id="simulator-view">
+            <div class="simulator-wrapper">
+                
+                <!-- Helper Quick Access list to easily test different users -->
+                <div class="simulator-helpers">
+                    <h3>💡 اختبار سريع للهواتف المختلفة:</h3>
+                    <p>اختر أحد الطلاب لمحاكاة جهازه واستقبال إشعاراته فورياً:</p>
+                    <div class="helper-buttons" id="quick-test-users">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Smartphone Mockup Frame -->
+                <div class="smartphone-frame" id="phone-frame">
+                    
+                    <!-- Phone Camera Notch / Dynamic Island -->
+                    <div class="phone-notch">
+                        <div class="notch-speaker"></div>
+                        <div class="notch-camera"></div>
+                    </div>
+
+                    <!-- Phone Screen Content -->
+                    <div class="phone-screen">
+                        
+                        <!-- Phone Status Bar -->
+                        <div class="phone-status-bar">
+                            <div class="status-time" id="phone-time">12:00</div>
+                            <div class="status-icons">
+                                <i data-lucide="wifi"></i>
+                                <span class="network-type">5G</span>
+                                <i data-lucide="battery"></i>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Sliding Push Notification Card -->
+                        <div class="push-notification-banner" id="push-banner" onclick="openTargetTab('notifications')">
+                            <div class="push-header">
+                                <div class="push-app-info">
+                                    <div class="push-app-logo">أ</div>
+                                    <span class="push-app-name">الأجاويد</span>
+                                </div>
+                                <span class="push-time">الآن</span>
+                            </div>
+                            <div class="push-body">
+                                <h4 id="push-title">عنوان الإشعار</h4>
+                                <p id="push-content">محتوى الإشعار الصادر من المدرسة...</p>
+                            </div>
+                            <div class="push-handle"></div>
+                        </div>
+
+                        <!-- ============================== -->
+                        <!-- SCREEN A: MOBILE APP LOGIN      -->
+                        <!-- ============================== -->
+                        <div class="app-screen" id="screen-login" style="display: flex;">
+                            <div class="login-header-logo">
+                                <div class="login-logo-circle">
+                                    <img id="app-logo-img" src="" alt="Ajaweed Logo" style="display: none;">
+                                    <div id="app-logo-placeholder" class="app-logo-placeholder-icon"><i data-lucide="graduation-cap"></i></div>
+                                </div>
+                                <h2>تطبيق الأجاويد <span>ajaweed</span></h2>
+                                <p>بمدرسة الأجاويد الأولى المتوسطة</p>
+                            </div>
+
+                            <form class="login-form" onsubmit="handleMobileLogin(event)">
+                                <div class="login-form-group">
+                                    <label for="login-student-id">رقم هوية الطالب / الإقامة:</label>
+                                    <div class="input-icon-group">
+                                        <i data-lucide="user"></i>
+                                        <input type="text" id="login-student-id" placeholder="أدخل رقم الهوية (مثال: 1001)" required>
+                                    </div>
+                                    <div class="login-hints">
+                                        <span>💡 جرب الدخول بالأرقام: <strong>1001</strong>، <strong>1003</strong>، <strong>1005</strong> أو <strong>1007</strong></span>
+                                    </div>
+                                </div>
+
+                                <div class="login-form-group">
+                                    <label for="login-phone">رقم جوال ولي الأمر المسجل:</label>
+                                    <div class="input-icon-group">
+                                        <i data-lucide="phone"></i>
+                                        <input type="password" id="login-phone" placeholder="أدخل كلمة المرور أو رقم الجوال" value="0500000000">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn-app-primary">
+                                    <span>تسجيل الدخول الآمن</span>
+                                    <i data-lucide="arrow-left"></i>
+                                </button>
+                            </form>
+
+                            <div class="login-footer">
+                                <p>إذا كنت تواجه مشكلة في تسجيل الدخول، يرجى مراجعة إدارة القبول والتسجيل بمدرسة الأجاويد الأولى المتوسطة.</p>
+                            </div>
+                        </div>
+
+                        <!-- ============================== -->
+                        <!-- SCREEN B: MOBILE APP HOME       -->
+                        <!-- ============================== -->
+                        <div class="app-screen" id="screen-home" style="display: none;">
+                            
+                            <!-- App Top Header -->
+                            <div class="app-top-header">
+                                <div class="app-user-profile">
+                                    <div class="avatar-circle" id="app-avatar-initial">ع</div>
+                                    <div class="app-user-details">
+                                        <h3 id="app-parent-welcome">مرحباً، ولي الأمر</h3>
+                                        <span id="app-student-name">الطالب: عبد الرحمن العتيبي</span>
+                                        <span id="app-student-grade" class="app-grade-tag">الصف الأول المتوسط</span>
+                                    </div>
+                                </div>
+                                <button class="btn-app-logout" onclick="handleMobileLogout()" title="تسجيل الخروج">
+                                    <i data-lucide="log-out"></i>
+                                </button>
+                            </div>
+
+                            <!-- App Inner Content Area (Scrollable) -->
+                            <div class="app-scroll-content">
+                                
+                                <!-- Simulated PWA Installation Card (Visible if not simulated installed) -->
+                                <div class="pwa-install-ribbon" id="pwa-install-card">
+                                    <div class="pwa-content">
+                                        <div class="pwa-icon"><i data-lucide="sparkles"></i></div>
+                                        <div class="pwa-text">
+                                            <h4>ثبت تطبيق الأجاويد</h4>
+                                            <p>استقبل الإشعارات الفورية على شاشتك مباشرة</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn-pwa-install" onclick="simulatePWAInstall()">تثبيت الآن</button>
+                                </div>
+
+                                <!-- Attendance Status Card -->
+                                <div class="app-widget attendance-widget">
+                                    <div class="widget-header">
+                                        <i data-lucide="calendar"></i>
+                                        <span>حالة الحضور والانضباط اليوم</span>
+                                    </div>
+                                    <div class="attendance-card-status" id="app-att-card">
+                                        <div class="att-status-indicator indicator-present" id="app-att-indicator">
+                                            <i data-lucide="check-circle" id="app-att-icon"></i>
+                                        </div>
+                                        <div class="att-status-text">
+                                            <h4 id="app-att-status-label">حاضر اليوم</h4>
+                                            <p id="app-att-desc">تم رصد حضور الطالب ودخوله للمدرسة في الموعد المحدد.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Morning Delay Tracker widget -->
+                                <div class="app-widget delay-widget" id="app-delay-widget">
+                                    <div class="widget-header">
+                                        <i data-lucide="clock"></i>
+                                        <span>عداد التأخر الصباحي</span>
+                                    </div>
+                                    <div class="delay-content">
+                                        <div class="radial-gauge">
+                                            <svg viewBox="0 0 36 36" class="circular-chart gold">
+                                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                <path class="circle" id="app-delay-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                <text x="18" y="20.35" class="percentage" id="app-delay-text">0 د</text>
+                                            </svg>
+                                        </div>
+                                        <div class="delay-info-text">
+                                            <h4>التأخر الصباحي التراكمي</h4>
+                                            <p id="app-delay-desc">الطالب ملتزم بالحضور المبكر. ممتاز!</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Messages Switch Tabs inside Phone -->
+                                <div class="app-in-navigation">
+                                    <button class="app-nav-tab active" id="app-tab-btn-notifications" onclick="switchAppTab('notifications')">
+                                        <i data-lucide="bell"></i>
+                                        <span>إشعارات خاصة</span>
+                                        <span class="app-badge-counter" id="app-private-badge" style="display: none;">0</span>
+                                    </button>
+                                    <button class="app-nav-tab" id="app-tab-btn-news" onclick="switchAppTab('news')">
+                                        <i data-lucide="megaphone"></i>
+                                        <span>إعلانات المدرسة</span>
+                                    </button>
+                                </div>
+
+                                <!-- Private Messages View -->
+                                <div class="app-tab-view" id="app-view-notifications" style="display: block;">
+                                    <div class="messages-feed" id="app-private-feed">
+                                        <!-- Populated dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- School General News View -->
+                                <div class="app-tab-view" id="app-view-news" style="display: none;">
+                                    <div class="messages-feed" id="app-general-feed">
+                                        <!-- Populated dynamically -->
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Smartphone Bottom Nav Indicator -->
+                            <div class="phone-home-indicator"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Glowing Frame Shadow Decor -->
+                    <div class="phone-shadow"></div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- DIALOGS & MODALS                               -->
+    <!-- ============================================== -->
+    <div class="modal-overlay" id="add-student-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i data-lucide="user-plus"></i> إضافة طالب جديد لدليل الأجاويد</h3>
+                <button class="modal-close" onclick="closeAddStudentModal()">&times;</button>
+            </div>
+            <form id="add-student-form" onsubmit="handleAddStudentSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-student-name">اسم الطالب رباعي:</label>
+                            <input type="text" id="new-student-name" required placeholder="أدخل اسم الطالب رباعياً">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-student-id">رقم الهوية الوطنية / الإقامة (الباركود):</label>
+                            <input type="text" id="new-student-id" required pattern="[0-9]{4,10}" placeholder="أدخل رقم الهوية (4 إلى 10 أرقام)">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-student-grade">الصف الدراسي:</label>
+                            <select id="new-student-grade" required>
+                                <option value="الصف الأول المتوسط - أ">الصف الأول المتوسط - أ</option>
+                                <option value="الصف الأول المتوسط - ب">الصف الأول المتوسط - ب</option>
+                                <option value="الصف الثاني المتوسط - أ">الصف الثاني المتوسط - أ</option>
+                                <option value="الصف الثاني المتوسط - ب">الصف الثاني المتوسط - ب</option>
+                                <option value="الصف الثالث المتوسط - أ">الصف الثالث المتوسط - أ</option>
+                                <option value="الصف الثالث المتوسط - ب">الصف الثالث المتوسط - ب</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-parent-name">اسم ولي الأمر:</label>
+                            <input type="text" id="new-parent-name" required placeholder="أدخل اسم ولي الأمر">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-parent-phone">رقم هاتف ولي الأمر (للتواصل):</label>
+                            <input type="tel" id="new-parent-phone" required pattern="05[0-9]{8}" placeholder="05xxxxxxxx">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-student-status">تثبيت التطبيق مسبقاً؟</label>
+                            <select id="new-student-status">
+                                <option value="not_installed">🔴 لم يثبت التطبيق بعد</option>
+                                <option value="installed">🟢 تم تثبيت التطبيق وتفعيله</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddStudentModal()">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ الطالب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert toast for notification logs inside admin dashboard -->
+    <div class="toast-notification" id="app-toast">
+        <i data-lucide="check-circle" id="toast-icon"></i>
+        <span id="toast-msg">تم إرسال الإشعار بنجاح!</span>
+    </div>
+
+    <!-- External library for parsing Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- External app logic -->
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
