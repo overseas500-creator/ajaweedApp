@@ -1024,7 +1024,20 @@
                         <div class="p-counter-label">غياب</div>
                     </div>
                 </div>
+
+                <!-- أرشيف الحضور والانضباط التاريخي -->
+                <div id="p-archive-section" style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 14px;">
+                    <div onclick="toggleArchiveCollapse()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding: 4px 0; user-select:none;">
+                        <span style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; color:var(--green-main);">
+                            <i data-lucide="history" style="width:15px; height:15px;"></i>
+                            أرشيف الحضور والانضباط التاريخي
+                        </span>
+                        <i data-lucide="chevron-down" id="archive-chevron" style="width:16px; height:16px; color:var(--muted); transition:transform 0.3s ease;"></i>
+                    </div>
+                    <div id="p-archive-list" style="display:none; flex-direction:column; gap:6px; margin-top:10px; max-height:260px; overflow-y:auto; padding-right:2px;"></div>
+                </div>
             </div>
+
 
         </div><!-- /screen-home -->
 

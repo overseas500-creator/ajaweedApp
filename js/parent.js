@@ -59,6 +59,21 @@ function loadStudents() {
                         s.attendance = "none";
                         repaired = true;
                     }
+                    // تهيئة سجل الحضور التاريخي إن لم يكن موجوداً
+                    if (!s.attendanceHistory) {
+                        s.attendanceHistory = [];
+                        repaired = true;
+                    }
+                    // تصفير العدادات القديمة المبنية على الهاش لتتطابق مع الأرشيف الفعلي
+                    const correctEarly  = s.attendanceHistory.filter(r => r.status === "present").length;
+                    const correctLate   = s.attendanceHistory.filter(r => r.status === "delayed" || r.status === "late").length;
+                    const correctAbsent = s.attendanceHistory.filter(r => r.status === "absent").length;
+                    if (s.earlyDaysCount !== correctEarly || s.lateDaysCount !== correctLate || s.absentDaysCount !== correctAbsent) {
+                        s.earlyDaysCount  = correctEarly;
+                        s.lateDaysCount   = correctLate;
+                        s.absentDaysCount = correctAbsent;
+                        repaired = true;
+                    }
                 });
             }
             if (repaired) {
@@ -69,6 +84,10 @@ function loadStudents() {
             allStudents.forEach(s => {
                 s.attendance = "none";
                 s.attendanceTime = "";
+                s.attendanceHistory = [];
+                s.earlyDaysCount    = 0;
+                s.lateDaysCount     = 0;
+                s.absentDaysCount   = 0;
             });
             localStorage.setItem(STUDENTS_KEY, JSON.stringify(allStudents));
         }
@@ -319,6 +338,63 @@ function renderChildData(studentId) {
 
     // الإعلانات العامة
     renderGeneralMessages();
+
+    // أرشيف الحضور التاريخي
+    renderAttendanceArchive(student);
+}
+
+// ==========================================================================
+// أرشيف الحضور والانضباط التاريخي
+// ==========================================================================
+
+let archiveCollapsed = true;
+
+function toggleArchiveCollapse() {
+    const listEl    = document.getElementById("p-archive-list");
+    const chevronEl = document.getElementById("archive-chevron");
+    if (!listEl) return;
+    archiveCollapsed = !archiveCollapsed;
+    if (archiveCollapsed) {
+        listEl.style.display = "none";
+        if (chevronEl) chevronEl.style.transform = "rotate(0deg)";
+    } else {
+        listEl.style.display = "flex";
+        if (chevronEl) chevronEl.style.transform = "rotate(180deg)";
+    }
+}
+
+function renderAttendanceArchive(student) {
+    const listEl = document.getElementById("p-archive-list");
+    if (!listEl) return;
+
+    const history = (student.attendanceHistory || []);
+    if (history.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; color:var(--muted); font-size:0.8rem; padding:12px;">لا توجد سجلات حضور سابقة حتى الآن</div>`;
+        return;
+    }
+
+    const statusConfig = {
+        present: { icon: "✅", label: "حضور مبكر",    color: "#2ecc71" },
+        absent:  { icon: "❌", label: "غياب",         color: "#e74c3c" },
+        delayed: { icon: "⏰", label: "حضور متأخر",  color: "#f39c12" },
+        late:    { icon: "⏰", label: "حضور متأخر",  color: "#f39c12" }
+    };
+
+    listEl.innerHTML = history.slice(0, 60).map(record => {
+        const cfg = statusConfig[record.status] || { icon: "⚠️", label: record.status, color: "var(--muted)" };
+        const delayBadge = (record.status === "delayed" || record.status === "late") && record.delay
+            ? `<span style="margin-right:4px; background:rgba(243,156,18,0.15); color:#f39c12; font-size:0.72rem; padding:1px 5px; border-radius:4px;">${record.delay} د.</span>`
+            : "";
+        return `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); border-radius:8px; padding:7px 10px; border-right:3px solid ${cfg.color};">
+            <span style="font-size:0.78rem; color:var(--muted);">${record.date}</span>
+            <span style="display:flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; color:${cfg.color};">${cfg.icon} ${cfg.label}${delayBadge}</span>
+        </div>`;
+    }).join("");
+
+    if (!archiveCollapsed) {
+        listEl.style.display = "flex";
+    }
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 // بطاقة الحضور
@@ -334,9 +410,10 @@ function renderAttendanceCard(student) {
 
     const configs = {
         none:     { cls: "att-none",     icon: "⚠️", text: "لم يتم رصد الحضور", desc: "لم يتم تسجيل حضور الطلاب اليوم" },
-        present:  { cls: "att-present",  icon: "✅", text: "حاضر اليوم",    desc: "تم رصد الحضور في الموعد المحدد." },
+        present:  { cls: "att-present",  icon: "✅", text: "حضور مبكر",    desc: "تم رصد الحضور في الموعد المحدد." },
         absent:   { cls: "att-absent",   icon: "❌", text: "غائب اليوم",    desc: "لم يتم رصد حضور الطالب اليوم. يُرجى التواصل مع المدرسة." },
-        late:     { cls: "att-late",     icon: "⏰", text: "متأخر صباحاً",  desc: `تأخر الطالب ${delayMins} دقيقة عن موعد الدراسة.` },
+        delayed:  { cls: "att-late",     icon: "⏰", text: "حضور متأخر",  desc: `تأخر الطالب ${delayMins} دقيقة عن موعد الدراسة.` },
+        late:     { cls: "att-late",     icon: "⏰", text: "حضور متأخر",  desc: `تأخر الطالب ${delayMins} دقيقة عن موعد الدراسة.` },
         excused:  { cls: "att-excused",  icon: "📋", text: "غياب بعذر",    desc: "تم توثيق الغياب بعذر رسمي." }
     };
 
@@ -353,22 +430,23 @@ function renderAttendanceCard(student) {
 
 // رسم عدادات الأيام الثلاثة
 function renderDaysCounters(student) {
-    if (student.earlyDaysCount === undefined) {
-        // توليد أرقام مستقرة وواقعية بناءً على رمز هوية الطالب
-        const hashStr = String(student.id || "0");
-        const hash = parseInt(hashStr.substring(Math.max(0, hashStr.length - 4))) || 0;
-        student.earlyDaysCount = (hash % 12) + 14; // بين 14 و 25 يوماً
-        student.lateDaysCount = hash % 4;         // بين 0 و 3 أيام
-        student.absentDaysCount = hash % 3;       // بين 0 و 2 يوم
+    // تهيئة سجل الأرشيف إن لم يكن موجوداً
+    if (!student.attendanceHistory) {
+        student.attendanceHistory = [];
     }
+
+    // حساب العدادات من سجل الأرشيف الفعلي فقط
+    const earlyCount  = student.attendanceHistory.filter(r => r.status === "present").length;
+    const lateCount   = student.attendanceHistory.filter(r => r.status === "delayed" || r.status === "late").length;
+    const absentCount = student.attendanceHistory.filter(r => r.status === "absent").length;
 
     const countEarly  = document.getElementById("p-count-early");
     const countLate   = document.getElementById("p-count-late");
     const countAbsent = document.getElementById("p-count-absent");
 
-    if (countEarly)  countEarly.textContent  = student.earlyDaysCount;
-    if (countLate)   countLate.textContent   = student.lateDaysCount;
-    if (countAbsent) countAbsent.textContent = student.absentDaysCount;
+    if (countEarly)  countEarly.textContent  = earlyCount;
+    if (countLate)   countLate.textContent   = lateCount;
+    if (countAbsent) countAbsent.textContent = absentCount;
 }
 
 // إشعارات الطالب الخاصة
@@ -1129,6 +1207,12 @@ function processSyncedStudent(studentId, rawVal) {
         earlyDaysCount: cloudStudentShort.early || 0,
         lateDaysCount: cloudStudentShort.late || 0,
         absentDaysCount: cloudStudentShort.absent || 0,
+        attendanceHistory: (cloudStudentShort.hist || []).map(h => ({
+            date: h.d,
+            status: h.s,
+            time: h.t,
+            delay: h.dy || 0
+        })),
         privateMessages: (cloudStudentShort.msgs || []).map(m => {
             let attachment = null;
             if (m.att) {
@@ -1194,18 +1278,44 @@ function processSyncedStudent(studentId, rawVal) {
         }
     }
 
-    // 1.5 مقارنة وتحديث عدادات الأيام الثلاثة
-    if (cloudStudent.earlyDaysCount !== undefined && cloudStudent.earlyDaysCount !== localStudent.earlyDaysCount) {
-        localStudent.earlyDaysCount = cloudStudent.earlyDaysCount;
-        updated = true;
-    }
-    if (cloudStudent.lateDaysCount !== undefined && cloudStudent.lateDaysCount !== localStudent.lateDaysCount) {
-        localStudent.lateDaysCount = cloudStudent.lateDaysCount;
-        updated = true;
-    }
-    if (cloudStudent.absentDaysCount !== undefined && cloudStudent.absentDaysCount !== localStudent.absentDaysCount) {
-        localStudent.absentDaysCount = cloudStudent.absentDaysCount;
-        updated = true;
+    // 1.5 مزامنة سجل الأرشيف التاريخي من السحابة
+    if (Array.isArray(cloudStudent.attendanceHistory) && cloudStudent.attendanceHistory.length > 0) {
+        if (!localStudent.attendanceHistory) {
+            localStudent.attendanceHistory = [];
+        }
+        let histUpdated = false;
+        cloudStudent.attendanceHistory.forEach(cloudRecord => {
+            const existIdx = localStudent.attendanceHistory.findIndex(r => r.date === cloudRecord.date);
+            if (existIdx === -1) {
+                localStudent.attendanceHistory.push(cloudRecord);
+                histUpdated = true;
+            } else if (localStudent.attendanceHistory[existIdx].status !== cloudRecord.status) {
+                localStudent.attendanceHistory[existIdx] = cloudRecord;
+                histUpdated = true;
+            }
+        });
+        if (histUpdated) {
+            localStudent.attendanceHistory.sort((a, b) => b.date.localeCompare(a.date));
+            // إعادة حساب العدادات من الأرشيف المدمج
+            localStudent.earlyDaysCount  = localStudent.attendanceHistory.filter(r => r.status === "present").length;
+            localStudent.lateDaysCount   = localStudent.attendanceHistory.filter(r => r.status === "delayed" || r.status === "late").length;
+            localStudent.absentDaysCount = localStudent.attendanceHistory.filter(r => r.status === "absent").length;
+            updated = true;
+        }
+    } else {
+        // إذا لم يكن هناك أرشيف، نزامن العدادات المباشرة فقط
+        if (cloudStudent.earlyDaysCount !== undefined && cloudStudent.earlyDaysCount !== localStudent.earlyDaysCount) {
+            localStudent.earlyDaysCount = cloudStudent.earlyDaysCount;
+            updated = true;
+        }
+        if (cloudStudent.lateDaysCount !== undefined && cloudStudent.lateDaysCount !== localStudent.lateDaysCount) {
+            localStudent.lateDaysCount = cloudStudent.lateDaysCount;
+            updated = true;
+        }
+        if (cloudStudent.absentDaysCount !== undefined && cloudStudent.absentDaysCount !== localStudent.absentDaysCount) {
+            localStudent.absentDaysCount = cloudStudent.absentDaysCount;
+            updated = true;
+        }
     }
 
     // 2. مقارنة الإشعارات والرسائل الخاصة للابن

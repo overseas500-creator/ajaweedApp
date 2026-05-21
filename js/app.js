@@ -305,6 +305,21 @@ function initDatabase() {
                 s.attendance = "none";
                 migrated = true;
             }
+            // تهيئة سجل الحضور التاريخي إن لم يكن موجوداً
+            if (!s.attendanceHistory) {
+                s.attendanceHistory = [];
+                migrated = true;
+            }
+            // تصفير العدادات القديمة المبنية على الهاش لتتطابق مع الأرشيف الفعلي
+            const correctEarly  = s.attendanceHistory.filter(r => r.status === "present").length;
+            const correctLate   = s.attendanceHistory.filter(r => r.status === "delayed" || r.status === "late").length;
+            const correctAbsent = s.attendanceHistory.filter(r => r.status === "absent").length;
+            if (s.earlyDaysCount !== correctEarly || s.lateDaysCount !== correctLate || s.absentDaysCount !== correctAbsent) {
+                s.earlyDaysCount  = correctEarly;
+                s.lateDaysCount   = correctLate;
+                s.absentDaysCount = correctAbsent;
+                migrated = true;
+            }
         });
 
         if (migrated) {
@@ -328,6 +343,10 @@ function initDatabase() {
             }
             s.attendance = "none"; // القيمة الافتراضية للطلاب الجدد
             s.attendanceTime = "";
+            s.attendanceHistory = [];
+            s.earlyDaysCount    = 0;
+            s.lateDaysCount     = 0;
+            s.absentDaysCount   = 0;
         });
         localStorage.setItem("ajaweed_students", JSON.stringify(students));
     }
@@ -1041,20 +1060,38 @@ function cycleStudentAttendance(studentId) {
         newTime = getFormattedArabicDateTime();
     }
 
-    // تهيئة العدادات وتحديثها
-    ensureStudentCounters(student);
-    if (newAtt === "present") {
-        student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
-    } else if (newAtt === "absent") {
-        student.absentDaysCount = (student.absentDaysCount || 0) + 1;
-    } else if (newAtt === "delayed") {
-        student.lateDaysCount = (student.lateDaysCount || 0) + 1;
+    // الحصول على تاريخ اليوم للأرشيف
+    const todayNow = new Date();
+    const todayStr = `${todayNow.getFullYear()}-${String(todayNow.getMonth() + 1).padStart(2, '0')}-${String(todayNow.getDate()).padStart(2, '0')}`;
+
+    // تهيئة سجل الأرشيف إن لم يكن موجوداً
+    if (!student.attendanceHistory) {
+        student.attendanceHistory = [];
+    }
+
+    if (newAtt === "none") {
+        // إزالة سجل اليوم من الأرشيف إذا تم التراجع
+        const idx = student.attendanceHistory.findIndex(r => r.date === todayStr);
+        if (idx !== -1) student.attendanceHistory.splice(idx, 1);
+    } else {
+        // إضافة أو تحديث سجل اليوم في الأرشيف
+        const historyRecord = { date: todayStr, status: newAtt, time: newTime, delay: newMinutes };
+        const existIdx = student.attendanceHistory.findIndex(r => r.date === todayStr);
+        if (existIdx !== -1) {
+            student.attendanceHistory[existIdx] = historyRecord;
+        } else {
+            student.attendanceHistory.push(historyRecord);
+            student.attendanceHistory.sort((a, b) => b.date.localeCompare(a.date));
+        }
     }
 
     student.attendance = newAtt;
     student.morningDelayMinutes = newMinutes;
     student.attendanceTime = newTime;
-    
+
+    // إعادة حساب العدادات من الأرشيف المحدّث
+    ensureStudentCounters(student);
+
     syncData();
     refreshUI();
     
@@ -2147,6 +2184,36 @@ function processDailyAttendance() {
         let importedCount = 0;
         let stats = { early: 0, absent: 0, late: 0 };
 
+        // إعادة تعيين حالة حضور جميع الطلاب إلى "none" قبل المعالجة
+        // لضمان أن فقط الطلاب الموجودين في ملف اليوم يعكسون حالة يومية فعلية
+        students.forEach(s => {
+            s.attendance    = "none";
+            s.attendanceTime = "";
+            s.morningDelayMinutes = 0;
+        });
+
+        // استخراج تاريخ اليوم كنص لمقارنة السجلات في الأرشيف
+        function getDateStr(rawDate) {
+            if (rawDate !== null && rawDate !== undefined) {
+                if (typeof rawDate === "number") {
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const dateObj = new Date(excelEpoch.getTime() + rawDate * 24 * 60 * 60 * 1000);
+                    if (!isNaN(dateObj.getTime())) {
+                        const yyyy = dateObj.getFullYear();
+                        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const dd = String(dateObj.getDate()).padStart(2, '0');
+                        return `${yyyy}-${mm}-${dd}`;
+                    }
+                } else {
+                    const str = String(rawDate).trim();
+                    if (str) return str;
+                }
+            }
+            // تاريخ اليوم كاحتياطي
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
         results.forEach(res => {
             const { type, rows } = res;
             if (!rows || rows.length === 0) return;
@@ -2158,6 +2225,7 @@ function processDailyAttendance() {
             // عمود D (مؤشر 3): الصف
             // عمود E (مؤشر 4): الفصل
             // عمود F (مؤشر 5): رقم الهاتف
+            // عمود G (مؤشر 6): وقت الحضور
             // عمود J (مؤشر 9): مقدار التأخر (فقط لملف المتأخرين)
 
             rows.forEach((row, idx) => {
@@ -2216,7 +2284,6 @@ function processDailyAttendance() {
                     const rawDelay = row[9]; // عمود J
                     if (rawDelay !== null && rawDelay !== undefined) {
                         if (typeof rawDelay === "number") {
-                            // إذا كان مخزن كقيمة عشرية لتنسيق الوقت في إكسل (مثل 0.0111 لـ 16 دقيقة)
                             if (rawDelay < 1) {
                                 delayMinutes = Math.round(rawDelay * 1440);
                             } else {
@@ -2234,91 +2301,98 @@ function processDailyAttendance() {
                             }
                         }
                     }
-                    if (delayMinutes <= 0) delayMinutes = 15; // قيمة افتراضية كحد أدنى في حال الخطأ
+                    if (delayMinutes <= 0) delayMinutes = 15;
                 }
 
                 // تحديد حالة الحضور الجديدة
                 let attStatus = "present";
                 if (type === "absent") attStatus = "absent";
-                if (type === "late") attStatus = "delayed";
+                if (type === "late")   attStatus = "delayed";
 
-                // استخراج وقت وتاريخ الحضور الفعلي من أعمدة إكسل (اليوم الدراسي وزمن الحضور)
+                // استخراج وقت وتاريخ الحضور الفعلي من أعمدة إكسل
                 let parsedTime = parseExcelDateTime(row[0], row[6]);
                 if (!parsedTime) {
                     parsedTime = getFormattedArabicDateTime();
                 }
 
-                // تحضير كائن الطالب الجديد بالكامل في حال كان مضافاً لأول مرة
-                const studentObj = {
-                    id: studentId,
-                    name: studentName,
-                    grade: grade,
-                    parentName: parentName,
-                    parentPhone: mobile,
-                    status: Math.random() > 0.4 ? "installed" : "not_installed",
-                    lastActive: Math.random() > 0.3 ? "منذ دقيقتين" : "غير نشط حالياً",
-                    attendance: attStatus,
-                    attendanceTime: parsedTime,
-                    morningDelayMinutes: delayMinutes,
-                    privateMessages: []
+                // استخراج تاريخ اليوم من العمود A (للأرشيف)
+                const dateStr = getDateStr(row[0]);
+
+                // بناء سجل الأرشيف لهذا اليوم
+                const historyRecord = {
+                    date:   dateStr,
+                    status: attStatus,
+                    time:   parsedTime,
+                    delay:  delayMinutes
                 };
 
                 // التحقق مما إذا كان الطالب مسجل مسبقاً في الدليل
                 const existingIdx = students.findIndex(s => s.id === studentId);
                 if (existingIdx !== -1) {
                     const student = students[existingIdx];
-                    
-                    // تهيئة العدادات وتحديثها
-                    ensureStudentCounters(student);
-                    if (attStatus === "present") {
-                        student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
-                    } else if (attStatus === "absent") {
-                        student.absentDaysCount = (student.absentDaysCount || 0) + 1;
-                    } else if (attStatus === "delayed") {
-                        student.lateDaysCount = (student.lateDaysCount || 0) + 1;
+
+                    // تهيئة سجل الأرشيف إن لم يكن موجوداً
+                    if (!student.attendanceHistory) {
+                        student.attendanceHistory = [];
                     }
 
-                    // تحديث حالة الحضور فقط ودقائق التأخر للطالب الحالي
+                    // إضافة أو تحديث السجل لهذا اليوم في الأرشيف
+                    const existingRecordIdx = student.attendanceHistory.findIndex(r => r.date === dateStr);
+                    if (existingRecordIdx !== -1) {
+                        student.attendanceHistory[existingRecordIdx] = historyRecord;
+                    } else {
+                        student.attendanceHistory.push(historyRecord);
+                        // ترتيب تنازلي حسب التاريخ لعرض الأحدث أولاً
+                        student.attendanceHistory.sort((a, b) => b.date.localeCompare(a.date));
+                    }
+
+                    // تحديث حالة الحضور اليومي للطالب الحالي
                     student.attendance = attStatus;
                     student.attendanceTime = parsedTime;
                     student.morningDelayMinutes = delayMinutes;
-                    
-                    // محاكاة إرسال إشعار فوري لولي الأمر إذا كان التطبيق مفعل لديهم
-                    simulateDailyAttendanceNotification(student);
-                    
+
+                    // إعادة حساب العدادات من الأرشيف الكامل
+                    ensureStudentCounters(student);
+
                     // مزامنة السحابة بعد رصد الحضور من إكسل
                     if (typeof syncStudentToCloud === "function") {
                         syncStudentToCloud(student);
                     }
-                    
+
                     updatedCount++;
                 } else {
-                    // تهيئة العدادات وتحديثها للطالب الجديد
-                    ensureStudentCounters(studentObj);
-                    if (attStatus === "present") {
-                        studentObj.earlyDaysCount = (studentObj.earlyDaysCount || 0) + 1;
-                    } else if (attStatus === "absent") {
-                        studentObj.absentDaysCount = (studentObj.absentDaysCount || 0) + 1;
-                    } else if (attStatus === "delayed") {
-                        studentObj.lateDaysCount = (studentObj.lateDaysCount || 0) + 1;
-                    }
-
                     // إنشاء حساب طالب جديد تلقائياً وإضافته للدليل
+                    const studentObj = {
+                        id: studentId,
+                        name: studentName,
+                        grade: grade,
+                        parentName: parentName,
+                        parentPhone: mobile,
+                        status: Math.random() > 0.4 ? "installed" : "not_installed",
+                        lastActive: "لم يسجل دخول بعد",
+                        attendance: attStatus,
+                        attendanceTime: parsedTime,
+                        morningDelayMinutes: delayMinutes,
+                        privateMessages: [],
+                        attendanceHistory: [historyRecord]
+                    };
+
+                    // حساب العدادات للطالب الجديد
+                    ensureStudentCounters(studentObj);
+
                     students.push(studentObj);
-                    
-                    simulateDailyAttendanceNotification(studentObj);
-                    
+
                     // مزامنة السحابة للطالب الجديد
                     if (typeof syncStudentToCloud === "function") {
                         syncStudentToCloud(studentObj);
                     }
-                    
+
                     importedCount++;
                 }
 
-                if (type === "early") stats.early++;
+                if (type === "early")  stats.early++;
                 if (type === "absent") stats.absent++;
-                if (type === "late") stats.late++;
+                if (type === "late")   stats.late++;
             });
         });
 
@@ -2343,62 +2417,11 @@ function processDailyAttendance() {
     });
 }
 
-// محاكاة وتوليد إرسال إشعار حضور وغياب فوري تفاعلي لولي الأمر (Inbox integration)
-function simulateDailyAttendanceNotification(student) {
-    const timestamp = new Date().toISOString();
-    let text = "";
-    let logTitle = "";
-    
-    if (student.attendance === "present") {
-        logTitle = "حضور الطالب";
-        text = `نفيدكم علماً بتحضير ابنكم (${student.name}) حاضراً اليوم في موعد حضور مبكر ومثالي. نشكر لكم اهتمامكم بانضباطه.`;
-    } else if (student.attendance === "absent") {
-        logTitle = "غياب الطالب";
-        text = `تنبيه: نفيدكم علماً بغياب ابنكم (${student.name}) عن اليوم الدراسي اليوم. يرجى تقديم مبرر الغياب لإدارة المدرسة في أقرب وقت.`;
-    } else if (student.attendance === "delayed") {
-        logTitle = "تأخر صباحي";
-        text = `تنبيه: نفيدكم علماً بتأخر ابنكم (${student.name}) عن طابور الصباح اليوم بمقدار (${student.morningDelayMinutes}) دقيقة. نأمل الحرص والمتابعة لتفادي ذلك مستقبلاً.`;
-    }
-
-    const newMsg = {
-        id: "msg_" + Date.now() + Math.random().toString(36).substr(2, 5),
-        text: text,
-        date: timestamp,
-        read: false,
-        attachment: null
-    };
-
-    if (!student.privateMessages) {
-        student.privateMessages = [];
-    }
-    student.privateMessages.unshift(newMsg);
-
-    // تسجيل الإشعار في سجل الإرسال الإداري اليومي العام
-    saveNotifLog({
-        type: "attendance",
-        subType: student.attendance,
-        title: logTitle,
-        recipientName: student.name,
-        text: text,
-        timestamp: timestamp,
-        attachment: null
-    });
-    
-    sentNotificationsTodayCount++;
-    localStorage.setItem("ajaweed_sent_count", sentNotificationsTodayCount.toString());
-
-    // إطلاق محاكاة الهاتف المنبثقة فورياً إذا كان هذا هو الطالب المفتوح حالياً بالجوال
-    if (student.id === currentStudentId) {
-        triggerSimulatedPushNotification(logTitle, text);
-    } else {
-        const mobileBadge = document.getElementById("mobile-badge");
-        if (mobileBadge) mobileBadge.style.display = "block";
-    }
-}
-
 // ==========================================================================
 // 15. نظام المزامنة السحابية الفورية (Cloud Sync Backend)
 // ==========================================================================
+
+
 const CLOUD_APP_KEY = "x3odkkjc";
 const CLOUD_API_UPDATE = `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_APP_KEY}`;
 
@@ -2445,7 +2468,13 @@ function syncStudentToCloud(student) {
         early: student.earlyDaysCount || 0,
         late: student.lateDaysCount || 0,
         absent: student.absentDaysCount || 0,
-        msgs: messages
+        msgs: messages,
+        hist: (student.attendanceHistory || []).slice(0, 60).map(h => ({
+            d: h.date,
+            s: h.status,
+            t: h.time,
+            dy: h.delay || 0
+        }))
     };
 
     const key = `s_${student.id}`;
@@ -2497,15 +2526,16 @@ function syncGeneralMessagesToCloud() {
         .catch(err => console.error("خطأ في مزامنة الإعلانات العامة:", err));
 }
 
-// تهيئة وضمان وجود عدادات الأيام الثلاثة بشكل مستقر مبني على رمز الهوية الوطنية
+// تهيئة عدادات الأيام الثلاثة وحسابها ديناميكياً من سجل الحضور التاريخي
 function ensureStudentCounters(student) {
     if (!student) return;
-    if (student.earlyDaysCount === undefined || student.earlyDaysCount === null) {
-        const hashStr = String(student.id || "0");
-        const hash = parseInt(hashStr.substring(Math.max(0, hashStr.length - 4))) || 0;
-        student.earlyDaysCount = (hash % 12) + 14; // بين 14 و 25 يوماً
-        student.lateDaysCount = hash % 4;         // بين 0 و 3 أيام
-        student.absentDaysCount = hash % 3;       // بين 0 و 2 يوم
+    // تهيئة سجل الأرشيف إن لم يكن موجوداً
+    if (!student.attendanceHistory) {
+        student.attendanceHistory = [];
     }
+    // حساب العدادات من سجل الأرشيف الفعلي فقط
+    student.earlyDaysCount  = student.attendanceHistory.filter(r => r.status === "present").length;
+    student.lateDaysCount   = student.attendanceHistory.filter(r => r.status === "delayed" || r.status === "late").length;
+    student.absentDaysCount = student.attendanceHistory.filter(r => r.status === "absent").length;
 }
 
