@@ -9,6 +9,7 @@ let students = [];
 let generalMessages = [];
 let currentStudentId = null; // الطالب النشط حالياً في محاكي الجوال
 let sentNotificationsTodayCount = 0;
+let currentAttachment = null; // المرفق الحالي (صورة أو PDF)
 
 // تحميل البيانات عند بدء تشغيل المنصة
 document.addEventListener("DOMContentLoaded", () => {
@@ -303,6 +304,19 @@ function renderLogs() {
 
         const dateStr = new Date(log.timestamp).toLocaleTimeString("ar-SA", {hour: '2-digit', minute: '2-digit'});
 
+        let attachmentHtml = "";
+        if (log.attachment) {
+            const isImg = log.attachment.type.startsWith("image/");
+            attachmentHtml = `
+                <div class="log-attachment-preview">
+                    <a href="${log.attachment.data}" download="${log.attachment.name}" class="log-attachment-badge" onclick="event.stopPropagation();">
+                        <i data-lucide="${isImg ? 'image' : 'file-text'}"></i>
+                        <span>${log.attachment.name} (${log.attachment.size})</span>
+                    </a>
+                </div>
+            `;
+        }
+
         item.className = `log-item ${typeClass}`;
         item.innerHTML = `
             <div class="log-item-details">
@@ -312,6 +326,7 @@ function renderLogs() {
                 <div class="log-text-box">
                     <h4>${log.title} - ${log.recipientName}</h4>
                     <p>${log.text}</p>
+                    ${attachmentHtml}
                 </div>
             </div>
             <div class="log-item-time">
@@ -482,6 +497,95 @@ function cycleStudentAttendance(studentId) {
 }
 
 // ==========================================================================
+// إدارة المرفقات (Attachment Handling - صور و PDF)
+// ==========================================================================
+
+function triggerAttachmentSelect() {
+    document.getElementById("attachment-file-input").click();
+}
+
+function handleAttachmentSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // حد أقصى 5 ميجابايت لمنع امتلاء سعة التخزين المحلي
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showToast("error", "حجم الملف كبير جداً! الحد الأقصى المسموح به هو 5 ميجابايت.");
+        event.target.value = "";
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Data = e.target.result;
+        
+        let formattedSize = "";
+        if (file.size < 1024 * 1024) {
+            formattedSize = (file.size / 1024).toFixed(1) + " KB";
+        } else {
+            formattedSize = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+        }
+
+        currentAttachment = {
+            name: file.name,
+            type: file.type,
+            size: formattedSize,
+            data: base64Data
+        };
+
+        const previewContainer = document.getElementById("attachment-preview");
+        const previewImg = document.getElementById("preview-img");
+        const previewPdfIcon = document.getElementById("preview-pdf-icon");
+        const previewFilename = document.getElementById("preview-filename");
+        const previewFilesize = document.getElementById("preview-filesize");
+
+        if (previewFilename) previewFilename.textContent = file.name;
+        if (previewFilesize) previewFilesize.textContent = formattedSize;
+        if (previewContainer) previewContainer.style.display = "block";
+
+        if (file.type.startsWith("image/")) {
+            if (previewImg) {
+                previewImg.src = base64Data;
+                previewImg.style.display = "block";
+            }
+            if (previewPdfIcon) previewPdfIcon.style.display = "none";
+        } else if (file.type === "application/pdf") {
+            if (previewImg) previewImg.style.display = "none";
+            if (previewPdfIcon) previewPdfIcon.style.display = "flex";
+        } else {
+            if (previewImg) previewImg.style.display = "none";
+            if (previewPdfIcon) previewPdfIcon.style.display = "flex";
+        }
+
+        showToast("success", "تم إرفاق الملف بنجاح للمعاينة!");
+        lucide.createIcons();
+    };
+
+    reader.onerror = function() {
+        showToast("error", "فشل قراءة الملف. الرجاء المحاولة مرة أخرى.");
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function removeAttachment(silent = false) {
+    currentAttachment = null;
+    const fileInput = document.getElementById("attachment-file-input");
+    if (fileInput) fileInput.value = "";
+
+    const previewContainer = document.getElementById("attachment-preview");
+    if (previewContainer) previewContainer.style.display = "none";
+
+    const previewImg = document.getElementById("preview-img");
+    if (previewImg) previewImg.src = "";
+
+    if (!silent) {
+        showToast("success", "تم إزالة المرفق.");
+    }
+}
+
+// ==========================================================================
 // 4. معالجة الإرسال الفعلي والتفاعل الصوتي/البصري (Dispatch & Audio Chime)
 // ==========================================================================
 
@@ -514,7 +618,8 @@ function handleSendNotification(e) {
             id: "gen_" + Date.now(),
             title: logTitle,
             text: text,
-            date: timestamp
+            date: timestamp,
+            attachment: currentAttachment ? { ...currentAttachment } : null
         };
 
         generalMessages.unshift(newAnn); // إضافة للأمام في قائمة الإعلانات المدرسية
@@ -529,7 +634,8 @@ function handleSendNotification(e) {
             title: logTitle,
             recipientName: "جميع الطلاب",
             text: text,
-            timestamp: timestamp
+            timestamp: timestamp,
+            attachment: currentAttachment ? { ...currentAttachment } : null
         });
 
     } else {
@@ -555,7 +661,8 @@ function handleSendNotification(e) {
             id: "msg_" + Date.now(),
             text: text,
             date: timestamp,
-            read: false
+            read: false,
+            attachment: currentAttachment ? { ...currentAttachment } : null
         };
         student.privateMessages.unshift(newMsg);
 
@@ -574,7 +681,8 @@ function handleSendNotification(e) {
             title: logTitle,
             recipientName: student.name,
             text: text,
-            timestamp: timestamp
+            timestamp: timestamp,
+            attachment: currentAttachment ? { ...currentAttachment } : null
         });
     }
 
@@ -587,6 +695,9 @@ function handleSendNotification(e) {
     if (recipientVal === "all") {
         document.getElementById("notif-title").value = "";
     }
+    
+    // إزالة المرفق بصمت
+    removeAttachment(true);
     
     showToast("success", "تم إرسال الإشعار الفوري بنجاح ووصوله لجوال ولي الأمر!");
 }
@@ -782,12 +893,31 @@ function renderMobileApp() {
 
             const timeStr = new Date(msg.date).toLocaleDateString("ar-SA", {month: 'short', day: 'numeric'});
 
+            let attachmentHtml = "";
+            if (msg.attachment) {
+                if (msg.attachment.type.startsWith("image/")) {
+                    attachmentHtml = `<img src="${msg.attachment.data}" class="app-image-attachment" onclick="event.stopPropagation(); window.open(this.src)">`;
+                } else if (msg.attachment.type === "application/pdf") {
+                    attachmentHtml = `
+                        <a href="${msg.attachment.data}" download="${msg.attachment.name}" class="app-pdf-attachment-link" onclick="event.stopPropagation();">
+                            <i data-lucide="file-text"></i>
+                            <div class="pdf-info">
+                                <span class="pdf-name">${msg.attachment.name}</span>
+                                <span class="pdf-size">${msg.attachment.size}</span>
+                            </div>
+                            <i data-lucide="download" class="pdf-download-icon"></i>
+                        </a>
+                    `;
+                }
+            }
+
             card.innerHTML = `
                 <div class="message-card-top">
                     <h4>إدارة مدرسة الأجاويد</h4>
                     <span class="message-card-date">${timeStr}</span>
                 </div>
                 <p>${msg.text}</p>
+                ${attachmentHtml}
             `;
             privateFeed.appendChild(card);
         });
@@ -810,12 +940,31 @@ function renderMobileApp() {
 
             const timeStr = new Date(msg.date).toLocaleDateString("ar-SA", {month: 'short', day: 'numeric'});
 
+            let attachmentHtml = "";
+            if (msg.attachment) {
+                if (msg.attachment.type.startsWith("image/")) {
+                    attachmentHtml = `<img src="${msg.attachment.data}" class="app-image-attachment" onclick="event.stopPropagation(); window.open(this.src)">`;
+                } else if (msg.attachment.type === "application/pdf") {
+                    attachmentHtml = `
+                        <a href="${msg.attachment.data}" download="${msg.attachment.name}" class="app-pdf-attachment-link" onclick="event.stopPropagation();">
+                            <i data-lucide="file-text"></i>
+                            <div class="pdf-info">
+                                <span class="pdf-name">${msg.attachment.name}</span>
+                                <span class="pdf-size">${msg.attachment.size}</span>
+                            </div>
+                            <i data-lucide="download" class="pdf-download-icon"></i>
+                        </a>
+                    `;
+                }
+            }
+
             card.innerHTML = `
                 <div class="message-card-top">
                     <h4>📢 ${msg.title}</h4>
                     <span class="message-card-date">${timeStr}</span>
                 </div>
                 <p>${msg.text}</p>
+                ${attachmentHtml}
             `;
             generalFeed.appendChild(card);
         });

@@ -2146,3 +2146,258 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="
         display: none; /* إخفاء الأعمدة الأقل أهمية على الموبايل الشديد */
     }
 }
+
+/* ==========================================================================
+   ميزات إرفاق الملفات والصور المتقدمة (Advanced File Attachment Features)
+   ========================================================================== */
+
+.attachment-form-group {
+    background-color: rgba(15, 81, 50, 0.01);
+    border: 1.5px dashed var(--accent-color);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 20px;
+    transition: var(--transition);
+}
+
+.attachment-form-group:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(15, 81, 50, 0.03);
+}
+
+.attachment-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-attach {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1.5px solid #dcdfdc;
+    background-color: #ffffff;
+    color: var(--text-dark);
+    font-weight: 600;
+    transition: var(--transition);
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: var(--radius-sm);
+}
+
+.btn-attach:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: rgba(15, 81, 50, 0.02);
+}
+
+.attachment-preview-container {
+    background-color: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    box-shadow: var(--shadow-premium);
+    animation: fadeIn 0.3s ease;
+}
+
+.preview-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.preview-thumbnail-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    background-color: #f6f8f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.preview-thumbnail-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-pdf-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #dc3545;
+    font-weight: 800;
+    font-size: 0.7rem;
+    font-family: var(--font-en);
+}
+
+.preview-pdf-badge svg {
+    width: 22px;
+    height: 22px;
+    margin-bottom: -2px;
+}
+
+.preview-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.preview-details .filename {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    direction: ltr;
+    text-align: right;
+}
+
+.preview-details .filesize {
+    font-size: 0.75rem;
+    color: #888;
+    font-family: var(--font-en);
+}
+
+.btn-remove-attachment {
+    background: #fff0f1;
+    border: 1px solid #ffdbde;
+    color: #dc3545;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-remove-attachment:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: scale(1.1);
+}
+
+.btn-remove-attachment svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* التنسيق داخل شاشة الهاتف المحاكي */
+.app-image-attachment {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-top: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.app-image-attachment:hover {
+    opacity: 0.95;
+}
+
+.app-pdf-attachment-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    text-decoration: none;
+    color: var(--text-dark) !important;
+    transition: var(--transition);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+
+.app-pdf-attachment-link:hover {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+    transform: translateY(-1px);
+}
+
+.app-pdf-attachment-link svg {
+    width: 24px;
+    height: 24px;
+    color: #dc3545;
+    flex-shrink: 0;
+}
+
+.app-pdf-attachment-link .pdf-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.app-pdf-attachment-link .pdf-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    direction: ltr;
+    text-align: right;
+}
+
+.app-pdf-attachment-link .pdf-size {
+    font-size: 0.7rem;
+    color: #888;
+    font-family: var(--font-en);
+}
+
+.app-pdf-attachment-link .pdf-download-icon {
+    width: 16px;
+    height: 16px;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+/* تنسيق المرفقات في سجلات الإرسال بلوحة الإدارة */
+.log-attachment-preview {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.log-attachment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(197, 168, 128, 0.08);
+    border: 1px solid rgba(197, 168, 128, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-dark);
+    text-decoration: none;
+}
+
+.log-attachment-badge:hover {
+    background-color: rgba(197, 168, 128, 0.15);
+}
+
+.log-attachment-badge svg {
+    width: 12px;
+    height: 12px;
+}

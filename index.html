@@ -192,8 +192,41 @@
                             <div class="form-group">
                                 <label for="notif-text"><i data-lucide="file-text"></i> نص الإشعار الصادر:</label>
                                 <textarea id="notif-text" rows="4" required placeholder="سيتم إنشاء الرسالة تلقائياً بناءً على القوالب، ويمكنك التعديل عليها بحرية..."></textarea>
+                            </div>
+
+                            <!-- File Attachment Area (صورة أو PDF) -->
+                            <div class="form-group attachment-form-group">
+                                <label><i data-lucide="paperclip"></i> إرفاق ملف أو صورة مع الإشعار (اختياري):</label>
+                                <div class="attachment-input-wrapper">
+                                    <button type="button" class="btn-attach" onclick="triggerAttachmentSelect()">
+                                        <i data-lucide="file-image"></i>
+                                        <span>اختر صورة أو ملف PDF...</span>
+                                    </button>
+                                    <input type="file" id="attachment-file-input" accept="image/*, .pdf" style="display: none;" onchange="handleAttachmentSelect(event)">
+                                    <div id="attachment-preview" class="attachment-preview-container" style="display: none;">
+                                        <div class="preview-item">
+                                            <div class="preview-thumbnail-wrapper">
+                                                <img id="preview-img" src="" alt="معاينة المرفق" style="display: none;">
+                                                <div id="preview-pdf-icon" class="preview-pdf-badge" style="display: none;">
+                                                    <i data-lucide="file-text"></i>
+                                                    <span>PDF</span>
+                                                </div>
+                                            </div>
+                                            <div class="preview-details">
+                                                <span id="preview-filename" class="filename">document.pdf</span>
+                                                <span id="preview-filesize" class="filesize">1.2 MB</span>
+                                            </div>
+                                            <button type="button" class="btn-remove-attachment" onclick="removeAttachment()" title="إزالة المرفق">
+                                                <i data-lucide="x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: -10px; margin-bottom: 20px;">
                                 <div class="helper-text-info">
-                                    <i data-lucide="info"></i> سيقوم النظام بإرسال هذا النص كإشعار فوري وتثبيته في سجل الطالب.
+                                    <i data-lucide="info"></i> سيقوم النظام بإرسال هذا النص والمرفق كإشعار فوري وتثبيته في سجل الطالب.
                                 </div>
                             </div>
 
