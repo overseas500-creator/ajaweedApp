@@ -493,6 +493,7 @@
         .att-absent  { background: #ffebee; border-color: rgba(244,67,54,0.25); }
         .att-late    { background: #fff8e1; border-color: rgba(255,193,7,0.35); }
         .att-excused { background: #e3f2fd; border-color: rgba(33,150,243,0.25); }
+        .att-none    { background: #f8f9fa; border-color: rgba(108,117,125,0.25); }
 
         #p-att-label { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
         #p-att-desc  { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
@@ -508,44 +509,58 @@
             border: 1px solid var(--border);
         }
 
-        /* عداد التأخر الدائري */
-        .p-delay-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
+        /* عدادات الأيام الثلاثة */
+        .p-counters-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
             margin-top: 14px;
             padding-top: 14px;
             border-top: 1px dashed rgba(0,0,0,0.07);
         }
 
-        .p-radial-gauge { width: 70px; flex-shrink: 0; }
-
-        .p-circular-chart { display: block; }
-
-        .p-circle-bg {
-            fill: none;
-            stroke: #e9ecef;
-            stroke-width: 3.8;
+        .p-counter-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(248,249,250,0.7) 100%);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: var(--radius-md);
+            padding: 10px 6px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        
+        .p-counter-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
-        .p-circle {
-            fill: none;
-            stroke: var(--gold-main);
-            stroke-width: 3.8;
-            stroke-linecap: round;
-            transition: stroke-dasharray 1s ease;
+        .p-counter-card.card-early {
+            border-right: 4px solid #198754; /* Emerald Green */
+        }
+        .p-counter-card.card-late {
+            border-right: 4px solid #c5a880; /* Sand Gold */
+        }
+        .p-counter-card.card-absent {
+            border-right: 4px solid #dc3545; /* Warm Crimson */
         }
 
-        .p-percentage {
-            fill: var(--gold-dark);
-            font-family: var(--font-ar);
-            font-size: 7px;
-            font-weight: 700;
-            text-anchor: middle;
+        .p-counter-num {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 2px;
+            font-family: 'Outfit', 'Tajawal', sans-serif;
         }
+        
+        .p-counter-card.card-early .p-counter-num { color: #198754; }
+        .p-counter-card.card-late .p-counter-num { color: #c5a880; }
+        .p-counter-card.card-absent .p-counter-num { color: #dc3545; }
 
-        .p-delay-text h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 3px; }
-        .p-delay-text p  { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+        .p-counter-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
 
         /* ==============================
            بطاقة التثبيت (PWA)
@@ -928,50 +943,6 @@
                 </div>
             </div>
 
-            <!-- بطاقة تثبيت التطبيق -->
-            <div id="p-pwa-card" style="display:none;">
-                <div class="p-pwa-left">
-                    <div class="p-pwa-icon"><i data-lucide="sparkles"></i></div>
-                    <div class="p-pwa-text">
-                        <h4>ثبّت تطبيق الأجاويد</h4>
-                        <p>استقبل الإشعارات على شاشتك فوراً</p>
-                    </div>
-                </div>
-                <button class="p-btn-pwa" onclick="simulateParentPWAInstall()">تثبيت الآن</button>
-            </div>
-
-            <!-- حالة الحضور + عداد التأخر -->
-            <div class="p-status-grid">
-                <div class="p-section-label">
-                    <i data-lucide="calendar"></i>
-                    حالة الحضور والانضباط اليوم
-                </div>
-
-                <div class="p-attendance-card att-present" id="p-att-card">
-                    <div>
-                        <div id="p-att-label">✅ حاضر اليوم</div>
-                        <div id="p-att-desc">تم رصد الحضور في الموعد المحدد.</div>
-                    </div>
-                </div>
-
-                <div class="p-delay-row">
-                    <div class="p-radial-gauge">
-                        <svg viewBox="0 0 36 36" class="p-circular-chart">
-                            <path class="p-circle-bg"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                            <path class="p-circle" id="p-delay-circle"
-                                  stroke-dasharray="0, 100"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                            <text x="18" y="20.35" class="p-percentage" id="p-delay-text">0 د</text>
-                        </svg>
-                    </div>
-                    <div class="p-delay-text">
-                        <h4>التأخر الصباحي التراكمي</h4>
-                        <p id="p-delay-desc">الطالب ملتزم بالحضور المبكر. ممتاز! 🌟</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- الرسائل والإعلانات -->
             <div class="p-messages-section">
                 <div class="p-msg-tabs">
@@ -995,6 +966,48 @@
                 <div class="p-tab-view" id="p-view-general">
                     <div id="p-general-feed">
                         <!-- تُملأ ديناميكياً -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- بطاقة تثبيت التطبيق -->
+            <div id="p-pwa-card" style="display:none;">
+                <div class="p-pwa-left">
+                    <div class="p-pwa-icon"><i data-lucide="sparkles"></i></div>
+                    <div class="p-pwa-text">
+                        <h4>ثبّت تطبيق الأجاويد</h4>
+                        <p>استقبل الإشعارات على شاشتك فوراً</p>
+                    </div>
+                </div>
+                <button class="p-btn-pwa" onclick="simulateParentPWAInstall()">تثبيت الآن</button>
+            </div>
+
+            <!-- حالة الحضور + عدادات الأيام -->
+            <div class="p-status-grid">
+                <div class="p-section-label">
+                    <i data-lucide="calendar"></i>
+                    حالة الحضور والانضباط اليوم
+                </div>
+
+                <div class="p-attendance-card att-present" id="p-att-card">
+                    <div>
+                        <div id="p-att-label">✅ حاضر اليوم</div>
+                        <div id="p-att-desc">تم رصد الحضور في الموعد المحدد.</div>
+                    </div>
+                </div>
+
+                <div class="p-counters-row">
+                    <div class="p-counter-card card-early">
+                        <div class="p-counter-num" id="p-count-early">0</div>
+                        <div class="p-counter-label">حضور مبكر</div>
+                    </div>
+                    <div class="p-counter-card card-late">
+                        <div class="p-counter-num" id="p-count-late">0</div>
+                        <div class="p-counter-label">حضور متأخر</div>
+                    </div>
+                    <div class="p-counter-card card-absent">
+                        <div class="p-counter-num" id="p-count-absent">0</div>
+                        <div class="p-counter-label">غياب</div>
                     </div>
                 </div>
             </div>
@@ -1053,6 +1066,30 @@
                 </div>
                 <button onclick="closeRewardModal()" style="background: linear-gradient(135deg, var(--accent-color) 0%, #b39368 100%); border: none; border-radius: var(--radius-md); color: var(--primary-dark); padding: 12px 30px; font-weight: 700; cursor: pointer; width: 100%; transition: var(--transition); font-size: 1rem; box-shadow: var(--shadow-premium);">حسناً، استمر بالتميز</button>
             </div>
+        </div>
+    </div>
+
+    <!-- مودال تفاصيل الرسالة -->
+    <div class="modal-overlay" id="p-message-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); z-index: 10002; align-items: center; justify-content: center; padding: 20px; direction: rtl; backdrop-filter: blur(4px);">
+        <div style="background: #ffffff; border: 2px solid var(--accent-color, #c5a880); border-radius: var(--radius-lg, 12px); width: 100%; max-width: 500px; padding: 24px; color: #333333; text-align: right; box-shadow: var(--shadow-premium, 0 10px 30px rgba(0,0,0,0.3)); position: relative; display: flex; flex-direction: column; max-height: 85vh; overflow-y: auto;">
+            <button onclick="closeMessageModal()" style="position: absolute; top: 16px; left: 16px; background: #f1f1f1; border: none; color: #555; font-size: 1.4rem; cursor: pointer; line-height: 1; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">&times;</button>
+            <div style="margin-bottom: 16px; padding-left: 30px;">
+                <span id="p-modal-msg-type-icon" style="font-size: 1.8rem; margin-left: 8px; vertical-align: middle;">📢</span>
+                <span id="p-modal-msg-type" style="font-size: 0.8rem; font-weight: 700; color: var(--primary-color, #0f5132); text-transform: uppercase; background: rgba(15, 81, 50, 0.08); padding: 4px 10px; border-radius: 12px; vertical-align: middle;">إعلان عام</span>
+            </div>
+            <h2 id="p-modal-msg-title" style="color: var(--primary-color, #0f5132); font-size: 1.3rem; font-weight: 700; margin-top: 0; margin-bottom: 8px; line-height: 1.4;">عنوان الرسالة</h2>
+            <div id="p-modal-msg-date" style="font-size: 0.8rem; color: #888888; margin-bottom: 16px; border-bottom: 1px solid #eeeeee; padding-bottom: 8px;">2026-05-21</div>
+            
+            <div id="p-modal-msg-body" style="font-size: 0.95rem; line-height: 1.6; color: #444444; white-space: pre-wrap; margin-bottom: 20px; overflow-y: auto; max-height: 250px; padding-left: 4px;">
+                محتوى التفاصيل...
+            </div>
+            
+            <div id="p-modal-msg-attachment-section" style="border-top: 1px dashed #dddddd; padding-top: 16px; display: none;">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.85rem; color: #666;">المرفقات:</h4>
+                <div id="p-modal-msg-attachment-content"></div>
+            </div>
+            
+            <button onclick="closeMessageModal()" style="margin-top: 20px; background: linear-gradient(135deg, var(--primary-color, #0f5132) 0%, var(--primary-light, #146c43) 100%); border: none; border-radius: var(--radius-md, 8px); color: #ffffff; padding: 12px 24px; font-weight: 700; cursor: pointer; width: 100%; transition: var(--transition, all 0.2s); font-size: 1rem; box-shadow: 0 4px 12px rgba(15,81,50,0.15);">إغلاق</button>
         </div>
     </div>
 

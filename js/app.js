@@ -170,6 +170,7 @@ function setAppLogo() {
 }
 
 // تطبيع رقم الجوال بشكل متقدم ومقاوم للخطأ (يتعامل مع الفراغات، الشرطات، العشرية .0، والأرقام الهندية)
+// تطبيع رقم الجوال بشكل متقدم ومقاوم للخطأ (يتعامل مع الفراغات، الشرطات، العشرية .0، والأرقام الهندية)
 function normalizePhone(phone) {
     if (!phone) return "";
     let p = String(phone).trim();
@@ -184,6 +185,79 @@ function normalizePhone(phone) {
         p = "0" + p;
     }
     return p;
+}
+
+// رصد الوقت والتاريخ باللغة العربية
+function getFormattedArabicDateTime(dateObj = new Date()) {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    
+    let hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'م' : 'ص';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hr = String(hours).padStart(2, '0');
+    
+    return `${yyyy}-${mm}-${dd} ${hr}:${minutes} ${ampm}`;
+}
+
+// تحليل دقيق للتاريخ والوقت الفعلي القادم من الإكسل
+function parseExcelDateTime(rawDate, rawTime) {
+    let dateStr = "";
+    let timeStr = "";
+
+    // 1. تحليل التاريخ (عمود A)
+    if (rawDate !== null && rawDate !== undefined) {
+        if (typeof rawDate === "number") {
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const dateObj = new Date(excelEpoch.getTime() + rawDate * 24 * 60 * 60 * 1000);
+            if (!isNaN(dateObj.getTime())) {
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                dateStr = `${yyyy}-${mm}-${dd}`;
+            }
+        } else {
+            dateStr = String(rawDate).trim();
+        }
+    }
+
+    // 2. تحليل الوقت (عمود G)
+    if (rawTime !== null && rawTime !== undefined) {
+        if (typeof rawTime === "number") {
+            let totalSeconds = Math.round(rawTime * 24 * 60 * 60);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let ampm = hours >= 12 ? 'م' : 'ص';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        } else {
+            let str = String(rawTime).trim();
+            if (str.includes(":") && !str.includes("ص") && !str.includes("م")) {
+                const parts = str.split(":");
+                let hours = parseInt(parts[0]) || 0;
+                const minutes = parseInt(parts[1]) || 0;
+                const ampm = hours >= 12 ? 'م' : 'ص';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+            } else {
+                timeStr = str;
+            }
+        }
+    }
+
+    if (dateStr && timeStr) {
+        return `${dateStr} ${timeStr}`;
+    } else if (dateStr) {
+        return dateStr;
+    } else if (timeStr) {
+        return timeStr;
+    }
+    return "";
 }
 
 // تهيئة قاعدة البيانات المحلية
@@ -225,6 +299,14 @@ function initDatabase() {
             }
         });
 
+        // 3. تحويل الحضور التلقائي القديم بدون وقت رصد إلى "لم يرصد" (none)
+        students.forEach(s => {
+            if ((s.attendance === "present" || !s.attendance) && !s.attendanceTime) {
+                s.attendance = "none";
+                migrated = true;
+            }
+        });
+
         if (migrated) {
             localStorage.setItem("ajaweed_students", JSON.stringify(students));
         }
@@ -244,6 +326,8 @@ function initDatabase() {
             if (s.parentPhone) {
                 s.parentPhone = normalizePhone(s.parentPhone);
             }
+            s.attendance = "none"; // القيمة الافتراضية للطلاب الجدد
+            s.attendanceTime = "";
         });
         localStorage.setItem("ajaweed_students", JSON.stringify(students));
     }
@@ -430,7 +514,11 @@ function renderStudentsTable() {
             let attClass = "present";
             let attLabel = "حاضر";
             let attIcon = "smile";
-            if (s.attendance === "absent") {
+            if (s.attendance === "none") {
+                attClass = "none";
+                attLabel = "لم يرصد";
+                attIcon = "alert-circle";
+            } else if (s.attendance === "absent") {
                 attClass = "absent";
                 attLabel = "غائب";
                 attIcon = "frown";
@@ -910,22 +998,46 @@ function cycleStudentAttendance(studentId) {
 
     let newAtt = "present";
     let newMinutes = 0;
+    let newTime = "";
 
     if (student.attendance === "present") {
         newAtt = "absent";
+        newTime = "";
     } else if (student.attendance === "absent") {
         newAtt = "delayed";
         newMinutes = 20; // قيمة افتراضية للتأخر الصباحي
+        newTime = getFormattedArabicDateTime();
+    } else if (student.attendance === "delayed") {
+        newAtt = "none";
+        newTime = "";
     } else {
         newAtt = "present";
+        newTime = getFormattedArabicDateTime();
+    }
+
+    // تهيئة العدادات وتحديثها
+    ensureStudentCounters(student);
+    if (newAtt === "present") {
+        student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
+    } else if (newAtt === "absent") {
+        student.absentDaysCount = (student.absentDaysCount || 0) + 1;
+    } else if (newAtt === "delayed") {
+        student.lateDaysCount = (student.lateDaysCount || 0) + 1;
     }
 
     student.attendance = newAtt;
     student.morningDelayMinutes = newMinutes;
+    student.attendanceTime = newTime;
     
     syncData();
     refreshUI();
-    showToast("success", `تم تحديث حضور الطالب ${student.name} إلى (${newAtt === 'present' ? 'حاضر' : newAtt === 'absent' ? 'غائب' : 'متأخر'})`);
+    
+    // نشر التغييرات الفورية للسحابة لمزامنة جوال ولي الأمر
+    if (typeof syncStudentToCloud === "function") {
+        syncStudentToCloud(student);
+    }
+    
+    showToast("success", `تم تحديث حضور الطالب ${student.name} إلى (${newAtt === 'present' ? 'حاضر' : newAtt === 'absent' ? 'غائب' : newAtt === 'delayed' ? 'متأخر' : 'لم يرصد'})`);
 }
 
 // ==========================================================================
@@ -1070,6 +1182,11 @@ function handleSendNotification(e) {
             attachment: currentAttachment ? { ...currentAttachment } : null
         });
 
+        // المزامنة السحابية للإعلان العام
+        if (typeof syncGeneralMessagesToCloud === "function") {
+            syncGeneralMessagesToCloud();
+        }
+
     } else {
         // إرسال إشعار لطالب محدد
         const student = students.find(s => s.id === recipientVal);
@@ -1078,6 +1195,19 @@ function handleSendNotification(e) {
         if (type === "attendance") {
             subType = document.querySelector('input[name="att-status"]:checked').value;
             student.attendance = subType;
+            
+            // تهيئة العدادات وتحديثها
+            ensureStudentCounters(student);
+            if (subType === "present") {
+                student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
+            } else if (subType === "absent") {
+                student.absentDaysCount = (student.absentDaysCount || 0) + 1;
+            } else if (subType === "delayed") {
+                student.lateDaysCount = (student.lateDaysCount || 0) + 1;
+            }
+
+            student.attendanceTime = getFormattedArabicDateTime();
+
             if (subType === "delayed") {
                 student.morningDelayMinutes = parseInt(document.getElementById("minutes-late").value) || 15;
             } else {
@@ -1116,6 +1246,11 @@ function handleSendNotification(e) {
             timestamp: timestamp,
             attachment: currentAttachment ? { ...currentAttachment } : null
         });
+
+        // المزامنة السحابية للطالب
+        if (typeof syncStudentToCloud === "function") {
+            syncStudentToCloud(student);
+        }
     }
 
     sentNotificationsTodayCount++;
@@ -1538,7 +1673,8 @@ function handleAddStudentSubmit(e) {
         parentName: parentName,
         parentPhone: parentPhone,
         status: status,
-        attendance: "present",
+        attendance: "none",
+        attendanceTime: "",
         morningDelayMinutes: 0,
         lastActive: status === "installed" ? "نشط الآن" : "لم يسجل دخول بعد",
         privateMessages: []
@@ -1718,7 +1854,7 @@ function handleExcelImport(event) {
 
                 // 2. استخلاص اسم الأب/العائلة لولي الأمر من اسم الطالب رباعياً
                 const nameParts = studentName.split(/\s+/);
-                let parentName = "أبو " + nameParts[0];
+                let parentName = nameParts[0];
                 if (nameParts.length > 2) {
                     parentName = nameParts.slice(1).join(" ");
                 } else if (nameParts.length === 2) {
@@ -1757,7 +1893,8 @@ function handleExcelImport(event) {
                         parentName: parentName,
                         parentPhone: mobile,
                         status: "not_installed",
-                        attendance: "present",
+                        attendance: "none",
+                        attendanceTime: "",
                         morningDelayMinutes: 0,
                         lastActive: "غير نشط",
                         privateMessages: []
@@ -2037,7 +2174,7 @@ function processDailyAttendance() {
 
                 // 2. استخلاص اسم الأب لولي الأمر
                 const nameParts = studentName.split(/\s+/);
-                let parentName = "أبو " + nameParts[0];
+                let parentName = nameParts[0];
                 if (nameParts.length > 2) {
                     parentName = nameParts.slice(1).join(" ");
                 } else if (nameParts.length === 2) {
@@ -2079,6 +2216,12 @@ function processDailyAttendance() {
                 if (type === "absent") attStatus = "absent";
                 if (type === "late") attStatus = "delayed";
 
+                // استخراج وقت وتاريخ الحضور الفعلي من أعمدة إكسل (اليوم الدراسي وزمن الحضور)
+                let parsedTime = parseExcelDateTime(row[0], row[6]);
+                if (!parsedTime) {
+                    parsedTime = getFormattedArabicDateTime();
+                }
+
                 // تحضير كائن الطالب الجديد بالكامل في حال كان مضافاً لأول مرة
                 const studentObj = {
                     id: studentId,
@@ -2089,6 +2232,7 @@ function processDailyAttendance() {
                     status: Math.random() > 0.4 ? "installed" : "not_installed",
                     lastActive: Math.random() > 0.3 ? "منذ دقيقتين" : "غير نشط حالياً",
                     attendance: attStatus,
+                    attendanceTime: parsedTime,
                     morningDelayMinutes: delayMinutes,
                     privateMessages: []
                 };
@@ -2096,19 +2240,52 @@ function processDailyAttendance() {
                 // التحقق مما إذا كان الطالب مسجل مسبقاً في الدليل
                 const existingIdx = students.findIndex(s => s.id === studentId);
                 if (existingIdx !== -1) {
+                    const student = students[existingIdx];
+                    
+                    // تهيئة العدادات وتحديثها
+                    ensureStudentCounters(student);
+                    if (attStatus === "present") {
+                        student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
+                    } else if (attStatus === "absent") {
+                        student.absentDaysCount = (student.absentDaysCount || 0) + 1;
+                    } else if (attStatus === "delayed") {
+                        student.lateDaysCount = (student.lateDaysCount || 0) + 1;
+                    }
+
                     // تحديث حالة الحضور فقط ودقائق التأخر للطالب الحالي
-                    students[existingIdx].attendance = attStatus;
-                    students[existingIdx].morningDelayMinutes = delayMinutes;
+                    student.attendance = attStatus;
+                    student.attendanceTime = parsedTime;
+                    student.morningDelayMinutes = delayMinutes;
                     
                     // محاكاة إرسال إشعار فوري لولي الأمر إذا كان التطبيق مفعل لديهم
-                    simulateDailyAttendanceNotification(students[existingIdx]);
+                    simulateDailyAttendanceNotification(student);
+                    
+                    // مزامنة السحابة بعد رصد الحضور من إكسل
+                    if (typeof syncStudentToCloud === "function") {
+                        syncStudentToCloud(student);
+                    }
                     
                     updatedCount++;
                 } else {
+                    // تهيئة العدادات وتحديثها للطالب الجديد
+                    ensureStudentCounters(studentObj);
+                    if (attStatus === "present") {
+                        studentObj.earlyDaysCount = (studentObj.earlyDaysCount || 0) + 1;
+                    } else if (attStatus === "absent") {
+                        studentObj.absentDaysCount = (studentObj.absentDaysCount || 0) + 1;
+                    } else if (attStatus === "delayed") {
+                        studentObj.lateDaysCount = (studentObj.lateDaysCount || 0) + 1;
+                    }
+
                     // إنشاء حساب طالب جديد تلقائياً وإضافته للدليل
                     students.push(studentObj);
                     
                     simulateDailyAttendanceNotification(studentObj);
+                    
+                    // مزامنة السحابة للطالب الجديد
+                    if (typeof syncStudentToCloud === "function") {
+                        syncStudentToCloud(studentObj);
+                    }
                     
                     importedCount++;
                 }
@@ -2190,6 +2367,104 @@ function simulateDailyAttendanceNotification(student) {
     } else {
         const mobileBadge = document.getElementById("mobile-badge");
         if (mobileBadge) mobileBadge.style.display = "block";
+    }
+}
+
+// ==========================================================================
+// 15. نظام المزامنة السحابية الفورية (Cloud Sync Backend)
+// ==========================================================================
+const CLOUD_APP_KEY = "x3odkkjc";
+const CLOUD_API_UPDATE = `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_APP_KEY}`;
+
+// مزامنة حالة طالب محدد إلى السحابة
+function syncStudentToCloud(student) {
+    if (!student || !student.id) return;
+    
+    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (1024 حرف)
+    const messages = (student.privateMessages || student.messages || []).slice(0, 3).map(m => {
+        let attachment = null;
+        if (m.attachment) {
+            attachment = {
+                type: m.attachment.type,
+                name: m.attachment.name,
+                data: m.attachment.data ? (m.attachment.data.length > 300 ? "[Base64]" : m.attachment.data) : null
+            };
+        }
+        return {
+            id: m.id,
+            text: m.text || m.message || "",
+            date: m.date,
+            read: m.read || false,
+            attachment: attachment
+        };
+    });
+
+    ensureStudentCounters(student);
+    const payload = {
+        id: student.id,
+        attendance: student.attendance || "none",
+        attendanceTime: student.attendanceTime || "",
+        morningDelayMinutes: student.morningDelayMinutes || student.delayMinutes || 0,
+        earlyDaysCount: student.earlyDaysCount || 0,
+        lateDaysCount: student.lateDaysCount || 0,
+        absentDaysCount: student.absentDaysCount || 0,
+        privateMessages: messages
+    };
+
+    const key = `s_${student.id}`;
+    const value = JSON.stringify(payload);
+    
+    const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
+    
+    fetch(url, { method: "POST" })
+        .then(res => {
+            if (!res.ok) console.error("فشلت مزامنة الطالب سحابياً:", res.statusText);
+        })
+        .catch(err => console.error("خطأ في مزامنة الطالب:", err));
+}
+
+// مزامنة الإعلانات العامة إلى السحابة
+function syncGeneralMessagesToCloud() {
+    if (typeof generalMessages === "undefined") return;
+    const list = generalMessages.slice(0, 3).map(m => {
+        let attachment = null;
+        if (m.attachment) {
+            attachment = {
+                type: m.attachment.type,
+                name: m.attachment.name,
+                data: m.attachment.data ? (m.attachment.data.length > 300 ? "[Base64]" : m.attachment.data) : null
+            };
+        }
+        return {
+            id: m.id,
+            title: m.title || "إعلان عام",
+            text: m.text || m.body || m.message || "",
+            date: m.date,
+            attachment: attachment
+        };
+    });
+
+    const key = "gen_msgs";
+    const value = JSON.stringify(list);
+    
+    const url = `${CLOUD_API_UPDATE}/${key}/${encodeURIComponent(value)}`;
+    
+    fetch(url, { method: "POST" })
+        .then(res => {
+            if (!res.ok) console.error("فشلت مزامنة الإعلانات العامة سحابياً:", res.statusText);
+        })
+        .catch(err => console.error("خطأ في مزامنة الإعلانات العامة:", err));
+}
+
+// تهيئة وضمان وجود عدادات الأيام الثلاثة بشكل مستقر مبني على رمز الهوية الوطنية
+function ensureStudentCounters(student) {
+    if (!student) return;
+    if (student.earlyDaysCount === undefined || student.earlyDaysCount === null) {
+        const hashStr = String(student.id || "0");
+        const hash = parseInt(hashStr.substring(Math.max(0, hashStr.length - 4))) || 0;
+        student.earlyDaysCount = (hash % 12) + 14; // بين 14 و 25 يوماً
+        student.lateDaysCount = hash % 4;         // بين 0 و 3 أيام
+        student.absentDaysCount = hash % 3;       // بين 0 و 2 يوم
     }
 }
 

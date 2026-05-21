@@ -1100,6 +1100,12 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="
     border-color: rgba(255, 193, 7, 0.2);
 }
 
+.table-att-badge.none {
+    background-color: rgba(108, 117, 125, 0.08);
+    color: #6c757d;
+    border-color: rgba(108, 117, 125, 0.15);
+}
+
 .table-actions {
     display: flex;
     gap: 6px;
