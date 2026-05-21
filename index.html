@@ -255,6 +255,9 @@
                             <!-- Recipient Selection -->
                             <div class="form-group">
                                 <label for="notif-recipient"><i data-lucide="user-check"></i> المستلم (الطالب):</label>
+                                <div style="margin-bottom: 8px;">
+                                    <input type="text" id="recipient-search" placeholder="🔍 ابحث باسم الطالب أو رقم الهوية..." oninput="populateRecipientsDropdown()" style="padding: 10px 14px; font-size: 0.9rem;">
+                                </div>
                                 <select id="notif-recipient" onchange="onRecipientChange()" required>
                                     <option value="" disabled selected>اختر الطالب المستلم...</option>
                                     <option value="all">📢 إرسال للجميع (إعلان عام بمدرسة الأجاويد)</option>

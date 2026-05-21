@@ -427,23 +427,43 @@ function renderStats() {
 // ملء قائمة مستلمي الإشعارات
 function populateRecipientsDropdown() {
     const select = document.getElementById("notif-recipient");
+    if (!select) return;
+    
+    const searchInput = document.getElementById("recipient-search");
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
     const currentValue = select.value;
     
     // الاحتفاظ بالخيارين الأولين
     select.innerHTML = `
-        <option value="" disabled selected>اختر الطالب المستلم...</option>
+        <option value="" disabled ${!currentValue ? "selected" : ""}>${query ? "نتائج البحث..." : "اختر الطالب المستلم..."}</option>
         <option value="all">📢 إرسال للجميع (إعلان عام بمدرسة الأجاويد)</option>
     `;
 
-    students.forEach(student => {
+    // تصفية الطلاب بناءً على نص البحث
+    const filteredStudents = students.filter(student => {
+        if (!query) return true;
+        const nameMatch = student.name && student.name.toLowerCase().includes(query);
+        const idMatch = student.id && String(student.id).includes(query);
+        return nameMatch || idMatch;
+    });
+
+    filteredStudents.forEach(student => {
         const option = document.createElement("option");
         option.value = student.id;
         option.textContent = `${student.name} (${student.id}) - ${student.grade}`;
         select.appendChild(option);
     });
 
+    // الحفاظ على القيمة المحددة مسبقاً إذا كانت لا تزال موجودة في خيارات الـ select
     if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
         select.value = currentValue;
+    } else {
+        // إذا كان "إرسال للجميع" محدداً مسبقاً، نحافظ عليه
+        if (currentValue === "all") {
+            select.value = "all";
+        } else {
+            select.value = "";
+        }
     }
 }
 
@@ -978,6 +998,12 @@ function updateMessageTemplate() {
 
 // إعداد نموذج الإرسال عند النقر على إرسال إشعار لطالب معين من الجدول
 function selectStudentForNotification(studentId) {
+    const searchInput = document.getElementById("recipient-search");
+    if (searchInput) {
+        searchInput.value = "";
+    }
+    populateRecipientsDropdown();
+
     document.getElementById("notif-recipient").value = studentId;
     
     // التحويل لتبويب لوحة التحكم تلقائياً على الشاشات الصغيرة لتسهيل الاستخدام
