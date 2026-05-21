@@ -156,6 +156,10 @@
                     <i data-lucide="rotate-ccw"></i>
                     <span>إعادة تعيين النظام</span>
                 </button>
+                <button class="btn btn-primary" onclick="forceResyncAllToCloud(); showToast('success','جاري مزامنة البيانات مع السحابة لجميع أولياء الأمور...');" title="مزامنة فورية لجميع بيانات الطلاب والرسائل مع السحابة" style="gap:6px; padding: 8px 16px; font-size:0.82rem;">
+                    <i data-lucide="cloud-upload"></i>
+                    <span>مزامنة فورية</span>
+                </button>
                 <div class="system-time">
                     <i data-lucide="clock"></i>
                     <span id="live-clock">--:--:--</span>
@@ -163,6 +167,7 @@
             </div>
         </div>
     </header>
+
 
     <!-- Mobile View Tabs Switcher (Visible only on small screens) -->
     <div class="mobile-tabs">

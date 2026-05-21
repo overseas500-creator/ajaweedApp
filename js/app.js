@@ -373,6 +373,13 @@ function initDatabase() {
 
     // تحديث كافة عناصر واجهة المستخدم
     refreshUI();
+    
+    // إعادة مزامنة سحابية شاملة بعد 3 ثوانٍ من فتح التطبيق لضمان وصول البيانات لأولياء الأمور
+    setTimeout(() => {
+        if (typeof forceResyncAllToCloud === "function") {
+            forceResyncAllToCloud();
+        }
+    }, 3000);
 }
 
 // مزامنة البيانات مع الـ Local Storage
@@ -380,6 +387,30 @@ function syncData() {
     localStorage.setItem("ajaweed_students", JSON.stringify(students));
     localStorage.setItem("ajaweed_general_messages", JSON.stringify(generalMessages));
     localStorage.setItem("ajaweed_sent_count", sentNotificationsTodayCount.toString());
+}
+
+// إعادة مزامنة شاملة لجميع الطلاب إلى السحابة (لضمان وصول البيانات لأولياء الأمور)
+function forceResyncAllToCloud() {
+    if (!students || students.length === 0) return;
+    
+    // مزامنة الإعلانات العامة أولاً
+    if (typeof syncGeneralMessagesToCloud === "function") {
+        syncGeneralMessagesToCloud();
+    }
+    
+    // مزامنة الطلاب تدريجياً بفارق 200ms بين كل طالب لتجنب الضغط على الخادم
+    let idx = 0;
+    function syncNext() {
+        if (idx >= students.length) return;
+        const s = students[idx++];
+        // تأكد من العدادات قبل المزامنة
+        ensureStudentCounters(s);
+        if (typeof syncStudentToCloud === "function") {
+            syncStudentToCloud(s);
+        }
+        setTimeout(syncNext, 200);
+    }
+    syncNext();
 }
 
 // إعادة ضبط النظام كاملاً للقيم الأولية
@@ -393,6 +424,7 @@ function resetDatabase() {
         initDatabase();
     }
 }
+
 
 // تحديث الساعة المباشرة
 function updateLiveClock() {

@@ -1127,15 +1127,18 @@ function safeDecodeUnicode(str) {
 function safeParseKeyValue(raw) {
     if (!raw) return null;
     let s = raw.trim();
+    // فك التعليفة الخارجية إذا كان النص محاطاً بعلامات اقتباس
     if (s.startsWith('"') && s.endsWith('"')) {
         try { s = JSON.parse(s); } catch {}
     }
-    // 1. فك ترميز حروف اليونيكود أولاً لتجنب استبدال مدات ~u بعلامات نقطتين
+    // فك ترميز ~uXXXX أولاً لاستعادة الحروف العربية
     s = safeDecodeUnicode(s);
-    // 2. استرجاع النقطتين (:) المستبدلتين بـ (~) للملفات القديمة المتوافقة عكسياً
-    s = s.replace(/~/g, ':');
-    
-    try { return JSON.parse(s); } catch { return null; }
+    // محاولة تحليل الJSON مباشرة
+    try { return JSON.parse(s); } catch {}
+    // كحل احتياطي فقط للملفات القديمة جداً التي كانت تستخدم ~ بدلاً من :
+    // نستبدل فقط ~ التي ليست جزءاً من الكلمات العربية (أي التي تكون بين حرفين ASCII)
+    const legacyFixed = s.replace(/([\x00-\x7F])~([\x00-\x7F])/g, '$1:$2');
+    try { return JSON.parse(legacyFixed); } catch { return null; }
 }
 
 function processSyncedGeneralMessages(rawVal) {
@@ -1233,7 +1236,29 @@ function processSyncedStudent(studentId, rawVal) {
     };
 
     const localIdx = allStudents.findIndex(s => String(s.id) === String(studentId));
-    if (localIdx === -1) return;
+    if (localIdx === -1) {
+        // الطالب غير موجود في localStorage — أضفه ببيانات السحابة مع بيانات مبدئية من INITIAL_STUDENTS
+        const initialRef = typeof INITIAL_STUDENTS !== "undefined"
+            ? INITIAL_STUDENTS.find(s => String(s.id) === String(studentId))
+            : null;
+        const newEntry = Object.assign({}, initialRef || {}, {
+            id: String(studentId),
+            attendance: cloudStudent.attendance || "none",
+            attendanceTime: cloudStudent.attendanceTime || "",
+            morningDelayMinutes: cloudStudent.morningDelayMinutes || 0,
+            earlyDaysCount: cloudStudent.earlyDaysCount || 0,
+            lateDaysCount: cloudStudent.lateDaysCount || 0,
+            absentDaysCount: cloudStudent.absentDaysCount || 0,
+            attendanceHistory: cloudStudent.attendanceHistory || [],
+            privateMessages: cloudStudent.privateMessages || []
+        });
+        allStudents.push(newEntry);
+        localStorage.setItem(STUDENTS_KEY, JSON.stringify(allStudents));
+        if (String(activeChildId) === String(studentId)) {
+            renderChildData(activeChildId);
+        }
+        return;
+    }
 
     const localStudent = allStudents[localIdx];
     let updated = false;
