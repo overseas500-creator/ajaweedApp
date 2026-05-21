@@ -106,6 +106,15 @@
                         <p id="stat-sent-today">0</p>
                     </div>
                 </div>
+
+                <!-- Daily Attendance Quick Action Card -->
+                <div class="stat-card stat-card-action" onclick="openDailyAttendanceModal()" title="رصد الحضور اليومي من ملفات إكسل">
+                    <div class="stat-icon icon-attendance"><i data-lucide="calendar-range"></i></div>
+                    <div class="stat-info">
+                        <h3>رصد الحضور اليومي</h3>
+                        <p class="stat-action-label">استيراد من Excel</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Dashboard Panel -->
@@ -247,10 +256,6 @@
                             <h2>دليل الطلاب وحالة التطبيق</h2>
                         </div>
                         <div class="header-actions" style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-import-daily" onclick="openDailyAttendanceModal()" style="background-color: var(--card-bg); border: 1px solid var(--gold-primary, #c5a880); color: var(--gold-primary, #c5a880); transition: all 0.2s; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 0.9rem;" onmouseover="this.style.backgroundColor='rgba(197, 168, 128, 0.1)';" onmouseout="this.style.backgroundColor='var(--card-bg)';">
-                                <i data-lucide="calendar-range" style="width: 16px; height: 16px;"></i>
-                                <span>رصد الحضور اليومي (Excel)</span>
-                            </button>
                             <button class="btn btn-secondary btn-import" onclick="triggerExcelImport()" style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); transition: all 0.2s; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 0.9rem;" onmouseover="this.style.borderColor='var(--gold-primary)'; this.style.color='var(--gold-primary)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-primary)';">
                                 <i data-lucide="file-spreadsheet" style="width: 16px; height: 16px;"></i>
                                 <span>استيراد من إكسل</span>

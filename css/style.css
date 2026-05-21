@@ -329,6 +329,41 @@ body {
     background-color: rgba(197, 168, 128, 0.12);
     color: var(--accent-dark);
 }
+.icon-attendance {
+    background-color: rgba(197, 168, 128, 0.15);
+    color: #b08030;
+}
+
+/* بطاقة الإجراء السريع - قابلة للنقر بأسلوب مميز */
+.stat-card-action {
+    cursor: pointer;
+    border: 1.5px dashed rgba(197, 168, 128, 0.5);
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+}
+.stat-card-action::before {
+    background: linear-gradient(180deg, #c5a055, #a07830) !important;
+}
+.stat-card-action:hover {
+    border-color: #c5a055;
+    border-style: solid;
+    background-color: rgba(197, 168, 128, 0.06);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(197, 168, 128, 0.2);
+}
+.stat-card-action:hover .icon-attendance {
+    background-color: rgba(197, 168, 128, 0.25);
+    transform: scale(1.1);
+    transition: all 0.25s ease;
+}
+.stat-action-label {
+    font-family: var(--font-ar) !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #c5a055 !important;
+    letter-spacing: 0;
+}
 
 .stat-info h3 {
     font-size: 0.85rem;
