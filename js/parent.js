@@ -4,7 +4,8 @@
 // ================================================
 
 const SESSION_KEY = "ajaweed_parent_session";
-const STUDENTS_KEY = "ajaweed_students";
+const STUDENTS_KEY = "ajaweed_parent_students";
+const GENERAL_MSGS_KEY = "ajaweed_parent_general_messages";
 
 let parentSession = null;   // بيانات الجلسة النشطة
 let activeChildId = null;   // الطالب المعروض حالياً من بين الإخوة
@@ -484,7 +485,7 @@ function renderGeneralMessages() {
 
     let generalMessages = [];
     try {
-        const raw = localStorage.getItem("ajaweed_general_messages");
+        const raw = localStorage.getItem(GENERAL_MSGS_KEY);
         if (raw) generalMessages = JSON.parse(raw);
         else if (typeof INITIAL_GENERAL_MESSAGES !== "undefined") {
             generalMessages = INITIAL_GENERAL_MESSAGES;
@@ -586,7 +587,7 @@ function openMessageDetail(msgId, isGeneral) {
     if (isGeneral) {
         let generalMessages = [];
         try {
-            const raw = localStorage.getItem("ajaweed_general_messages");
+            const raw = localStorage.getItem(GENERAL_MSGS_KEY);
             if (raw) generalMessages = JSON.parse(raw);
             else if (typeof INITIAL_GENERAL_MESSAGES !== "undefined") {
                 generalMessages = INITIAL_GENERAL_MESSAGES;
@@ -1166,7 +1167,7 @@ function processSyncedGeneralMessages(rawVal) {
 
     let localMsgs = [];
     try {
-        const raw = localStorage.getItem("ajaweed_general_messages");
+        const raw = localStorage.getItem(GENERAL_MSGS_KEY);
         if (raw) localMsgs = JSON.parse(raw);
         else if (typeof INITIAL_GENERAL_MESSAGES !== "undefined") {
             localMsgs = INITIAL_GENERAL_MESSAGES;
@@ -1190,7 +1191,7 @@ function processSyncedGeneralMessages(rawVal) {
     });
 
     if (updated) {
-        localStorage.setItem("ajaweed_general_messages", JSON.stringify(localMsgs));
+        localStorage.setItem(GENERAL_MSGS_KEY, JSON.stringify(localMsgs));
         if (parentSession) {
             renderGeneralMessages();
         }

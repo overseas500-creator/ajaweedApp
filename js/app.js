@@ -1291,15 +1291,13 @@ function handleSendNotification(e) {
             subType = document.querySelector('input[name="att-status"]:checked').value;
             student.attendance = subType;
             
-            // تهيئة العدادات وتحديثها
-            ensureStudentCounters(student);
-            if (subType === "present") {
-                student.earlyDaysCount = (student.earlyDaysCount || 0) + 1;
-            } else if (subType === "absent") {
-                student.absentDaysCount = (student.absentDaysCount || 0) + 1;
-            } else if (subType === "delayed") {
-                student.lateDaysCount = (student.lateDaysCount || 0) + 1;
+            // تهيئة العدادات وتحديثها للأرشيف
+            if (!student.attendanceHistory) {
+                student.attendanceHistory = [];
             }
+            
+            const todayNow = new Date();
+            const todayStr = `${todayNow.getFullYear()}-${String(todayNow.getMonth() + 1).padStart(2, '0')}-${String(todayNow.getDate()).padStart(2, '0')}`;
 
             student.attendanceTime = getFormattedArabicDateTime();
 
@@ -1308,20 +1306,45 @@ function handleSendNotification(e) {
             } else {
                 student.morningDelayMinutes = 0;
             }
+            
+            // إضافة أو تحديث السجل التاريخي اليومي في الأرشيف
+            const historyRecord = {
+                date: todayStr,
+                status: subType,
+                time: student.attendanceTime,
+                delay: student.morningDelayMinutes
+            };
+            
+            const existIdx = student.attendanceHistory.findIndex(r => r.date === todayStr);
+            if (existIdx !== -1) {
+                student.attendanceHistory[existIdx] = historyRecord;
+            } else {
+                student.attendanceHistory.push(historyRecord);
+                student.attendanceHistory.sort((a, b) => b.date.localeCompare(a.date));
+            }
+            
+            // إعادة حساب العدادات بدقة من الأرشيف المحدث
+            ensureStudentCounters(student);
+
             logTitle = subType === "present" ? "حضور الطالب" : (subType === "absent" ? "غياب الطالب" : "تأخر صباحي");
         } else {
             logTitle = "رسالة خاصة";
         }
 
-        // إدراج الرسالة الخاصة بقائمة رسائل الطالب
-        const newMsg = {
-            id: "msg_" + Date.now(),
-            text: text,
-            date: timestamp,
-            read: false,
-            attachment: currentAttachment ? { ...currentAttachment } : null
-        };
-        student.privateMessages.unshift(newMsg);
+        // إدراج الرسالة الخاصة بقائمة رسائل الطالب (فقط إذا لم يكن نوع الإشعار حضور أو تأخر أو غياب)
+        if (type !== "attendance") {
+            if (!student.privateMessages) {
+                student.privateMessages = [];
+            }
+            const newMsg = {
+                id: "msg_" + Date.now(),
+                text: text,
+                date: timestamp,
+                read: false,
+                attachment: currentAttachment ? { ...currentAttachment } : null
+            };
+            student.privateMessages.unshift(newMsg);
+        }
 
         // محاكاة الاستقبال المباشر إذا كان هذا الطالب مسجل دخول بالجوال حالياً
         if (student.id === currentStudentId) {
@@ -2469,12 +2492,55 @@ function safeEscapeUnicode(str) {
     }).join('');
 }
 
-// مزامنة حالة طالب محدد إلى السحابة
+// طابور لتسلسل عمليات المزامنة السحابية ومنع المشاكل الناتجة عن الاتصالات المتزامنة بكثرة (خصوصاً عند رفع ملفات إكسل)
+let syncQueue = [];
+let isProcessingSyncQueue = false;
+
+function enqueueSync(type, data) {
+    syncQueue.push({ type, data });
+    processSyncQueue();
+}
+
+function processSyncQueue() {
+    if (isProcessingSyncQueue || syncQueue.length === 0) return;
+    isProcessingSyncQueue = true;
+
+    const task = syncQueue.shift();
+    const next = () => {
+        setTimeout(() => {
+            isProcessingSyncQueue = false;
+            processSyncQueue();
+        }, 150); // تأخير 150 مللي ثانية بين كل طلب والآخر ليكون الاتصال رفيقاً بالخادم ويمنع السقوط
+    };
+
+    if (task.type === "student") {
+        performSyncStudentToCloud(task.data, next);
+    } else if (task.type === "general") {
+        performSyncGeneralMessagesToCloud(next);
+    } else {
+        next();
+    }
+}
+
+// مزامنة حالة طالب محدد إلى السحابة (بشكل طابور متسلسل لمنع السقوط والضغط)
 function syncStudentToCloud(student) {
     if (!student || !student.id) return;
+    // تجنب إضافة نفس الطالب مكرراً في الطابور إذا كان موجوداً بالفعل ولم يبدأ معالجته بعد
+    const exists = syncQueue.some(q => q.type === "student" && q.data && q.data.id === student.id);
+    if (!exists) {
+        enqueueSync("student", student);
+    }
+}
+
+// العملية الفعلية لمزامنة طالب محدد إلى السحابة
+function performSyncStudentToCloud(student, callback) {
+    if (!student || !student.id) {
+        if (typeof callback === "function") callback();
+        return;
+    }
     
-    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (نسمح الآن بـ 300 حرف بفضل معامل الاستعلام)
-    const messages = (student.privateMessages || student.messages || []).slice(0, 1).map(m => {
+    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (نرسل آخر رسالتين لتوفير حماية تكرار)
+    const messages = (student.privateMessages || student.messages || []).slice(0, 2).map(m => {
         let attachment = null;
         if (m.attachment) {
             attachment = {
@@ -2521,12 +2587,26 @@ function syncStudentToCloud(student) {
         .then(res => {
             if (!res.ok) console.error("فشلت مزامنة الطالب سحابياً:", res.statusText);
         })
-        .catch(err => console.error("خطأ في مزامنة الطالب:", err));
+        .catch(err => console.error("خطأ في مزامنة الطالب:", err))
+        .finally(() => {
+            if (typeof callback === "function") callback();
+        });
 }
 
 // مزامنة الإعلانات العامة إلى السحابة
 function syncGeneralMessagesToCloud() {
-    if (typeof generalMessages === "undefined") return;
+    const exists = syncQueue.some(q => q.type === "general");
+    if (!exists) {
+        enqueueSync("general", null);
+    }
+}
+
+// العملية الفعلية لمزامنة الإعلانات العامة إلى السحابة
+function performSyncGeneralMessagesToCloud(callback) {
+    if (typeof generalMessages === "undefined") {
+        if (typeof callback === "function") callback();
+        return;
+    }
     const list = generalMessages.slice(0, 1).map(m => {
         let attachment = null;
         if (m.attachment) {
@@ -2555,7 +2635,10 @@ function syncGeneralMessagesToCloud() {
         .then(res => {
             if (!res.ok) console.error("فشلت مزامنة الإعلانات العامة سحابياً:", res.statusText);
         })
-        .catch(err => console.error("خطأ في مزامنة الإعلانات العامة:", err));
+        .catch(err => console.error("خطأ في مزامنة الإعلانات العامة:", err))
+        .finally(() => {
+            if (typeof callback === "function") callback();
+        });
 }
 
 // تهيئة عدادات الأيام الثلاثة وحسابها ديناميكياً من سجل الحضور التاريخي
@@ -2564,6 +2647,10 @@ function ensureStudentCounters(student) {
     // تهيئة سجل الأرشيف إن لم يكن موجوداً
     if (!student.attendanceHistory) {
         student.attendanceHistory = [];
+    }
+    // تهيئة قائمة الرسائل الخاصة إن لم تكن موجودة
+    if (!student.privateMessages) {
+        student.privateMessages = [];
     }
     // حساب العدادات من سجل الأرشيف الفعلي فقط
     student.earlyDaysCount  = student.attendanceHistory.filter(r => r.status === "present").length;
