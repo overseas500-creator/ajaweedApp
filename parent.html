@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق الأجاويد — بوابة أولياء الأمور</title>
+    <meta name="description" content="استقبل إشعارات حضور وغياب أبنائك فورياً من مدرسة الأجاويد الأولى المتوسطة">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f5132">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="الأجاويد">
+    <link rel="apple-touch-icon" href="ajaweed_logo_1779318974019.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* ==============================
+           متغيرات التصميم (CSS Tokens)
+           ============================== */
+        :root {
+            --green-dark:   #082d1c;
+            --green-main:   #0f5132;
+            --green-light:  #157347;
+            --gold-main:    #c5a880;
+            --gold-dark:    #9a7d56;
+            --gold-light:   #e8d9c4;
+            --red:          #dc3545;
+            --amber:        #ffc107;
+            --blue:         #1976d2;
+            --success:      #198754;
+            --bg:           #f0f4f2;
+            --card:         #ffffff;
+            --text:         #1a2520;
+            --muted:        #6c7a74;
+            --border:       rgba(200, 210, 205, 0.7);
+            --radius-sm:    10px;
+            --radius-md:    18px;
+            --radius-lg:    28px;
+            --shadow:       0 8px 28px rgba(0,0,0,0.09);
+            --shadow-green: 0 6px 20px rgba(15,81,50,0.18);
+            --transition:   all 0.3s cubic-bezier(0.4,0,0.2,1);
+            --font-ar:      'Tajawal', sans-serif;
+            --font-en:      'Outfit', sans-serif;
+        }
+
+        /* ==============================
+           أساسيات
+           ============================== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-ar);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 20% 0%, rgba(15,81,50,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(197,168,128,0.07) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ==============================
+           شريط الحالة العلوي (Status Bar)
+           ============================== */
+        .p-statusbar {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px 6px;
+            font-family: var(--font-en);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+            position: relative;
+            z-index: 10;
+        }
+
+        .p-statusbar-icons { display: flex; align-items: center; gap: 6px; }
+        .p-statusbar-icons svg { width: 14px; height: 14px; }
+
+        /* ==============================
+           الشعار والعنوان
+           ============================== */
+        .p-app-brand {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 24px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .p-logo-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--green-dark), var(--green-main));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-green);
+            margin-bottom: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .p-logo-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            border: 2px solid rgba(197,168,128,0.4);
+        }
+
+        .p-logo-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .p-logo-placeholder { color: var(--gold-main); }
+        .p-logo-placeholder svg { width: 36px; height: 36px; }
+
+        .p-brand-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--green-main);
+            letter-spacing: -0.3px;
+        }
+
+        .p-brand-title span { color: var(--gold-dark); font-family: var(--font-en); }
+        .p-brand-subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 2px; text-align: center; }
+
+        /* ==============================
+           بطاقة الشاشة المرنة (Card Wrapper)
+           ============================== */
+        .p-screen-wrap {
+            width: 100%;
+            max-width: 480px;
+            padding: 0 16px 32px;
+            position: relative;
+            z-index: 10;
+            flex: 1;
+        }
+
+        /* ==============================
+           شاشة تسجيل الدخول
+           ============================== */
+        #screen-login {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .p-login-card {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            padding: 28px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .p-login-heading {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .p-login-heading h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--green-main);
+        }
+
+        .p-login-heading p {
+            font-size: 0.82rem;
+            color: var(--muted);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .p-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .p-form-group label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .p-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .p-input-icon {
+            position: absolute;
+            right: 14px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+        }
+
+        .p-input-icon svg { width: 17px; height: 17px; }
+
+        .p-input-wrap input {
+            width: 100%;
+            padding: 12px 44px 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-ar);
+            font-size: 0.92rem;
+            color: var(--text);
+            background: #f8faf9;
+            transition: var(--transition);
+            -webkit-appearance: none;
+        }
+
+        .p-input-wrap input:focus {
+            outline: none;
+            border-color: var(--green-main);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15,81,50,0.1);
+        }
+
+        .p-login-hint {
+            font-size: 0.73rem;
+            color: var(--muted);
+            background: rgba(197,168,128,0.08);
+            border: 1px solid rgba(197,168,128,0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            line-height: 1.6;
+        }
+
+        .p-btn-login {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--green-main), var(--green-light));
+            color: white;
+            font-family: var(--font-ar);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: var(--shadow-green);
+            margin-top: 8px;
+        }
+
+        .p-btn-login:hover { filter: brightness(1.08); transform: translateY(-1px); }
+        .p-btn-login:active { transform: translateY(0); }
+        .p-btn-login svg { width: 18px; height: 18px; }
+
+        .p-login-error {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(220,53,69,0.08);
+            border: 1px solid rgba(220,53,69,0.25);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: var(--red);
+            margin-top: -4px;
+        }
+
+        .p-security-note {
+            background: var(--card);
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.78rem;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            line-height: 1.6;
+        }
+
+        .p-security-note svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: var(--green-main); }
+
+        /* ==============================
+           شاشة الرئيسية
+           ============================== */
+        #screen-home {
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* ترحيب ولي الأمر */
+        .p-welcome-bar {
+            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-main) 100%);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            box-shadow: var(--shadow-green);
+        }
+
+        .p-welcome-info { display: flex; align-items: center; gap: 14px; }
+
+        .p-avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(197,168,128,0.25);
+            border: 2px solid rgba(197,168,128,0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--gold-light);
+            flex-shrink: 0;
+        }
+
+        .p-welcome-text h3 { font-size: 1rem; font-weight: 700; }
+        .p-welcome-text p  { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+
+        .p-btn-logout {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.8);
+            padding: 7px 10px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+        }
+
+        .p-btn-logout:hover { background: rgba(255,255,255,0.18); color: white; }
+        .p-btn-logout svg { width: 16px; height: 16px; }
+
+        /* ==============================
+           تبويبات الأبناء
+           ============================== */
+        .p-siblings-section {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .p-section-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .p-section-label svg { width: 14px; height: 14px; color: var(--green-main); }
+
+        #sibling-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .sibling-tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 24px;
+            background: #f8faf9;
+            font-family: var(--font-ar);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .sibling-tab:hover { border-color: var(--green-main); color: var(--green-main); }
+
+        .sibling-tab.active {
+            background: var(--green-main);
+            border-color: var(--green-main);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 3px 10px rgba(15,81,50,0.25);
+        }
+
+        .sibling-name { font-weight: inherit; }
+
+        /* ==============================
+           بطاقة معلومات الطالب
+           ============================== */
+        .p-child-card {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .p-child-avatar {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(15,81,50,0.12), rgba(15,81,50,0.06));
+            border: 2px solid rgba(15,81,50,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--green-main);
+            flex-shrink: 0;
+        }
+
+        .p-child-info h3 { font-size: 1rem; font-weight: 700; }
+
+        .p-child-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .p-tag {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(15,81,50,0.08);
+            color: var(--green-main);
+        }
+
+        .p-tag.muted {
+            background: rgba(0,0,0,0.05);
+            color: var(--muted);
+        }
+
+        /* ==============================
+           بطاقة الحضور
+           ============================== */
+        .p-attendance-card {
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 1px solid transparent;
+            transition: var(--transition);
+            margin-top: 4px;
+        }
+
+        .att-present { background: #e8f5e9; border-color: rgba(76,175,80,0.25); }
+        .att-absent  { background: #ffebee; border-color: rgba(244,67,54,0.25); }
+        .att-late    { background: #fff8e1; border-color: rgba(255,193,7,0.35); }
+        .att-excused { background: #e3f2fd; border-color: rgba(33,150,243,0.25); }
+
+        #p-att-label { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+        #p-att-desc  { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+        /* ==============================
+           قسم الحضور + التأخر (مجمعة)
+           ============================== */
+        .p-status-grid {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        /* عداد التأخر الدائري */
+        .p-delay-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed rgba(0,0,0,0.07);
+        }
+
+        .p-radial-gauge { width: 70px; flex-shrink: 0; }
+
+        .p-circular-chart { display: block; }
+
+        .p-circle-bg {
+            fill: none;
+            stroke: #e9ecef;
+            stroke-width: 3.8;
+        }
+
+        .p-circle {
+            fill: none;
+            stroke: var(--gold-main);
+            stroke-width: 3.8;
+            stroke-linecap: round;
+            transition: stroke-dasharray 1s ease;
+        }
+
+        .p-percentage {
+            fill: var(--gold-dark);
+            font-family: var(--font-ar);
+            font-size: 7px;
+            font-weight: 700;
+            text-anchor: middle;
+        }
+
+        .p-delay-text h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 3px; }
+        .p-delay-text p  { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+        /* ==============================
+           بطاقة التثبيت (PWA)
+           ============================== */
+        #p-pwa-card {
+            background: linear-gradient(135deg, #0f5132, #157347);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: var(--shadow-green);
+            color: white;
+        }
+
+        .p-pwa-left { display: flex; align-items: center; gap: 12px; }
+
+        .p-pwa-icon {
+            width: 44px;
+            height: 44px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .p-pwa-icon svg { width: 22px; height: 22px; }
+
+        .p-pwa-text h4 { font-size: 0.92rem; font-weight: 700; }
+        .p-pwa-text p  { font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
+
+        .p-btn-pwa {
+            background: rgba(255,255,255,0.2);
+            border: 1.5px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            color: white;
+            font-family: var(--font-ar);
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 9px 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .p-btn-pwa:hover { background: rgba(255,255,255,0.3); }
+
+        /* ==============================
+           تبويبات الرسائل
+           ============================== */
+        .p-messages-section {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            padding: 0;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .p-msg-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .p-nav-tab {
+            flex: 1;
+            padding: 13px 8px;
+            border: none;
+            background: transparent;
+            font-family: var(--font-ar);
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .p-nav-tab svg { width: 15px; height: 15px; }
+
+        .p-nav-tab.active {
+            color: var(--green-main);
+            background: rgba(15,81,50,0.04);
+        }
+
+        .p-nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0; right: 0;
+            height: 2px;
+            background: var(--green-main);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .p-badge {
+            background: var(--red);
+            color: white;
+            font-size: 0.62rem;
+            font-weight: 700;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        .p-tab-view { padding: 12px 16px; display: none; }
+        .p-tab-view.active-view { display: block; }
+
+        /* بطاقات الرسائل */
+        .p-msg-card {
+            border-radius: var(--radius-sm);
+            border-right: 4px solid transparent;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            transition: var(--transition);
+        }
+
+        .p-msg-card:last-child { margin-bottom: 0; }
+
+        .p-msg-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .p-msg-icon { font-size: 1rem; flex-shrink: 0; }
+        .p-msg-title { font-size: 0.85rem; font-weight: 700; flex: 1; }
+        .p-msg-date  { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+        .p-msg-body  { font-size: 0.8rem; color: var(--text); line-height: 1.6; }
+
+        .p-msg-image {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 8px;
+            cursor: zoom-in;
+        }
+
+        .p-msg-pdf {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(220,53,69,0.08);
+            border: 1px solid rgba(220,53,69,0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--red);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .p-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 30px 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .p-empty-state svg { width: 36px; height: 36px; opacity: 0.4; }
+
+        /* ==============================
+           توست الإشعارات
+           ============================== */
+        #p-toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--green-dark);
+            color: white;
+            padding: 12px 22px;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            z-index: 9999;
+            white-space: nowrap;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        #p-toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ==============================
+           الفوتر
+           ============================== */
+        .p-footer {
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            padding: 20px 16px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* ==============================
+           تكيّف الشاشات الكبيرة
+           ============================== */
+        @media (min-width: 520px) {
+            .p-statusbar,
+            .p-app-brand,
+            .p-screen-wrap,
+            .p-footer {
+                max-width: 440px;
+            }
+
+            .p-screen-wrap {
+                border-right: 1px solid var(--border);
+                border-left: 1px solid var(--border);
+                background: rgba(255,255,255,0.4);
+                backdrop-filter: blur(8px);
+                padding-bottom: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- شريط الحالة العلوي -->
+    <div class="p-statusbar">
+        <span id="p-clock">--:--</span>
+        <div class="p-statusbar-icons">
+            <i data-lucide="wifi"></i>
+            <i data-lucide="signal"></i>
+            <i data-lucide="battery-full"></i>
+        </div>
+    </div>
+
+    <!-- الشعار والعنوان -->
+    <div class="p-app-brand">
+        <div class="p-logo-wrap">
+            <img id="p-logo-img" src="" alt="شعار الأجاويد">
+            <div id="p-logo-placeholder" class="p-logo-placeholder">
+                <i data-lucide="graduation-cap"></i>
+            </div>
+        </div>
+        <div class="p-brand-title">تطبيق الأجاويد <span>ajaweed</span></div>
+        <div class="p-brand-subtitle">بوابة أولياء الأمور — مدرسة الأجاويد الأولى المتوسطة</div>
+    </div>
+
+    <!-- ================================
+         محتوى الصفحة الرئيسي
+         ================================ -->
+    <div class="p-screen-wrap">
+
+        <!-- ============================
+             شاشة A: تسجيل الدخول
+             ============================ -->
+        <div id="screen-login">
+
+            <div class="p-login-card">
+                <div class="p-login-heading">
+                    <h2>🔐 تسجيل الدخول الآمن</h2>
+                    <p>أدخل رقم هوية أحد أبنائك ورقم جوالك المسجل بالمدرسة</p>
+                </div>
+
+                <form onsubmit="handleParentLogin(event)">
+
+                    <!-- رقم هوية الطالب -->
+                    <div class="p-form-group">
+                        <label for="p-student-id">رقم هوية الطالب / الإقامة</label>
+                        <div class="p-input-wrap">
+                            <span class="p-input-icon"><i data-lucide="user"></i></span>
+                            <input type="text" id="p-student-id"
+                                   placeholder="أدخل رقم الهوية الوطنية"
+                                   inputmode="numeric"
+                                   autocomplete="off"
+                                   required>
+                        </div>
+                    </div>
+
+                    <!-- رقم جوال ولي الأمر -->
+                    <div class="p-form-group">
+                        <label for="p-phone">رقم جوال ولي الأمر المسجل بالمدرسة</label>
+                        <div class="p-input-wrap">
+                            <span class="p-input-icon"><i data-lucide="phone"></i></span>
+                            <input type="tel" id="p-phone"
+                                   placeholder="05XXXXXXXX"
+                                   inputmode="numeric"
+                                   autocomplete="tel"
+                                   required>
+                        </div>
+                        <div class="p-login-hint">
+                            💡 رقم الجوال هو كلمة المرور — نفس الرقم المسجل لدى إدارة المدرسة عند التسجيل.
+                        </div>
+                    </div>
+
+                    <!-- رسالة الخطأ -->
+                    <div class="p-login-error" id="login-error">
+                        <i data-lucide="alert-circle"></i>
+                        <span id="login-error-text"></span>
+                    </div>
+
+                    <button type="submit" class="p-btn-login">
+                        <span>دخول الحساب</span>
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div class="p-security-note">
+                <i data-lucide="shield-check"></i>
+                <span>بياناتك محفوظة محلياً على جهازك فقط ولا تُرسَل لأي خادم خارجي. الدخول مرة واحدة يكفي — لن يُطلب منك تسجيل الدخول مجدداً.</span>
+            </div>
+
+        </div><!-- /screen-login -->
+
+        <!-- ============================
+             شاشة B: الرئيسية
+             ============================ -->
+        <div id="screen-home">
+
+            <!-- ترحيب ولي الأمر -->
+            <div class="p-welcome-bar">
+                <div class="p-welcome-info">
+                    <div class="p-avatar">👤</div>
+                    <div class="p-welcome-text">
+                        <h3 id="p-welcome-name">مرحباً، ولي الأمر</h3>
+                        <p id="p-parent-phone-display"></p>
+                    </div>
+                </div>
+                <button class="p-btn-logout" onclick="parentLogout()" title="تسجيل الخروج">
+                    <i data-lucide="log-out"></i>
+                </button>
+            </div>
+
+            <!-- تبويبات الأبناء -->
+            <div class="p-siblings-section" id="siblings-section" style="display:none;">
+                <div class="p-section-label">
+                    <i data-lucide="users"></i>
+                    أبناؤك المسجلون في المدرسة
+                </div>
+                <div id="sibling-tabs">
+                    <!-- تُملأ ديناميكياً -->
+                </div>
+            </div>
+
+            <!-- معلومات الطالب النشط -->
+            <div class="p-child-card">
+                <div class="p-child-avatar" id="p-avatar-letter">؟</div>
+                <div class="p-child-info">
+                    <h3 id="p-child-name">—</h3>
+                    <div class="p-child-meta">
+                        <span class="p-tag" id="p-child-grade">—</span>
+                        <span class="p-tag muted" id="p-child-id">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- بطاقة تثبيت التطبيق -->
+            <div id="p-pwa-card" style="display:none;">
+                <div class="p-pwa-left">
+                    <div class="p-pwa-icon"><i data-lucide="sparkles"></i></div>
+                    <div class="p-pwa-text">
+                        <h4>ثبّت تطبيق الأجاويد</h4>
+                        <p>استقبل الإشعارات على شاشتك فوراً</p>
+                    </div>
+                </div>
+                <button class="p-btn-pwa" onclick="simulateParentPWAInstall()">تثبيت الآن</button>
+            </div>
+
+            <!-- حالة الحضور + عداد التأخر -->
+            <div class="p-status-grid">
+                <div class="p-section-label">
+                    <i data-lucide="calendar"></i>
+                    حالة الحضور والانضباط اليوم
+                </div>
+
+                <div class="p-attendance-card att-present" id="p-att-card">
+                    <div>
+                        <div id="p-att-label">✅ حاضر اليوم</div>
+                        <div id="p-att-desc">تم رصد الحضور في الموعد المحدد.</div>
+                    </div>
+                </div>
+
+                <div class="p-delay-row">
+                    <div class="p-radial-gauge">
+                        <svg viewBox="0 0 36 36" class="p-circular-chart">
+                            <path class="p-circle-bg"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            <path class="p-circle" id="p-delay-circle"
+                                  stroke-dasharray="0, 100"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            <text x="18" y="20.35" class="p-percentage" id="p-delay-text">0 د</text>
+                        </svg>
+                    </div>
+                    <div class="p-delay-text">
+                        <h4>التأخر الصباحي التراكمي</h4>
+                        <p id="p-delay-desc">الطالب ملتزم بالحضور المبكر. ممتاز! 🌟</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الرسائل والإعلانات -->
+            <div class="p-messages-section">
+                <div class="p-msg-tabs">
+                    <button class="p-nav-tab active" id="p-tab-btn-private" onclick="switchParentTab('private')">
+                        <i data-lucide="bell"></i>
+                        إشعارات خاصة
+                        <span class="p-badge" id="p-private-badge">0</span>
+                    </button>
+                    <button class="p-nav-tab" id="p-tab-btn-general" onclick="switchParentTab('general')">
+                        <i data-lucide="megaphone"></i>
+                        إعلانات المدرسة
+                    </button>
+                </div>
+
+                <div class="p-tab-view active-view" id="p-view-private">
+                    <div id="p-private-feed">
+                        <!-- تُملأ ديناميكياً -->
+                    </div>
+                </div>
+
+                <div class="p-tab-view" id="p-view-general">
+                    <div id="p-general-feed">
+                        <!-- تُملأ ديناميكياً -->
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /screen-home -->
+
+    </div><!-- /p-screen-wrap -->
+
+    <!-- فوتر -->
+    <div class="p-footer">
+        مدرسة الأجاويد الأولى المتوسطة &nbsp;|&nbsp; جميع الحقوق محفوظة © 2025
+    </div>
+
+    <!-- توست الإشعارات -->
+    <div id="p-toast"></div>
+
+    <!-- قاعدة البيانات الأساسية للطلاب -->
+    <script src="js/data.js"></script>
+
+    <!-- منطق بوابة أولياء الأمور -->
+    <script src="js/parent.js"></script>
+
+</body>
+</html>
