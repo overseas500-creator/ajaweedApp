@@ -1,6 +1,12 @@
 // منطق عمل تطبيق الأجاويد (Ajaweed Notification System)
 // مدرسة الأجاويد الأولى المتوسطة
 
+// تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً/محلياً
+const API_BASE = (window.location.protocol === 'file:' || !window.location.host) 
+    ? 'http://localhost:3000' 
+    : '';
+
+
 // ==========================================================================
 // 0. نظام قفل لوحة الإدارة بالرمز السري (Admin PIN Lock)
 // ==========================================================================
@@ -420,8 +426,8 @@ function initDatabase() {
     // تحديث كافة عناصر واجهة المستخدم
     refreshUI();
     
-    // جلب البيانات الأحدث من السيرفر (قاعدة بيانات MongoDB) فور فتح التطبيق
-    fetch("/api/students")
+    // جلب البيانات الأحدث من السيرفر (قاعدة بيانات Supabase (PostgreSQL)) فور فتح التطبيق
+    fetch(API_BASE + "/api/students")
         .then(res => {
             if (res.ok) return res.json();
             throw new Error("API error");
@@ -442,7 +448,7 @@ function initDatabase() {
         })
         .catch(err => console.warn("تعذر جلب الطلاب من السيرفر، تم استخدام النسخة الاحتياطية المحلية:", err));
 
-    fetch("/api/general-messages")
+    fetch(API_BASE + "/api/general-messages")
         .then(res => {
             if (res.ok) return res.json();
             throw new Error("API error");
@@ -477,7 +483,7 @@ function forceResyncAllToCloud() {
     students.forEach(s => ensureStudentCounters(s));
     
     // رفع كامل قائمة الطلاب إلى الخادم دفعة واحدة لتحسين الأداء
-    return fetch('/api/students/bulk', {
+    return fetch(API_BASE + '/api/students/bulk', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ students: students })
@@ -502,7 +508,7 @@ function syncStudentsListToCloud(list) {
     // تأمين العدادات للطلاب المحددين قبل الإرسال
     list.forEach(s => ensureStudentCounters(s));
     
-    return fetch('/api/students/bulk', {
+    return fetch(API_BASE + '/api/students/bulk', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ students: list })
@@ -528,7 +534,7 @@ function resetDatabase() {
         localStorage.setItem("ajaweed_sent_count", "0");
         
         // إرسال طلب تصفير قاعدة البيانات السحابية
-        fetch('/api/database/reset', {
+        fetch(API_BASE + '/api/database/reset', {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ confirmCode: "AJAWEED_RESET_2026" })
@@ -564,7 +570,7 @@ async function resetTodayAttendance() {
         refreshUI();
 
         // 2. تصفير قاعدة البيانات السحابية
-        const res = await fetch('/api/attendance/reset-today', { method: "POST" });
+        const res = await fetch(API_BASE + '/api/attendance/reset-today', { method: "POST" });
         if (res.ok) {
             showToast("success", "✅ تم تصفير حضور اليوم لجميع الطلاب بنجاح! يمكنك الآن رفع ملف الحضور.");
         } else {
@@ -2691,7 +2697,7 @@ function performSyncStudentToCloud(student, callback) {
     ensureStudentCounters(student);
 
     // إرسال كائن الطالب كاملاً مع جميع رسائله وسجله دون أي اقتصاص أو ضياع للبيانات والمرفقات
-    fetch('/api/students/bulk', {
+    fetch(API_BASE + '/api/students/bulk', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ students: [student] })
@@ -2723,7 +2729,7 @@ function performSyncGeneralMessagesToCloud(callback) {
     // جلب الإعلان الأحدث المضاف حديثاً ونشره في خادم الـ API
     const latestAnn = generalMessages[0];
     
-    fetch('/api/general-messages', {
+    fetch(API_BASE + '/api/general-messages', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(latestAnn)

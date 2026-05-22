@@ -3,6 +3,11 @@
 //  منطق المصادقة وعرض الإخوة والجلسة الدائمة
 // ================================================
 
+// تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً/محلياً
+const API_BASE = (window.location.protocol === 'file:' || !window.location.host) 
+    ? 'http://localhost:3000' 
+    : '';
+
 const SESSION_KEY = "ajaweed_parent_session";
 const STUDENTS_KEY = "ajaweed_parent_students";
 const GENERAL_MSGS_KEY = "ajaweed_parent_general_messages";
@@ -140,7 +145,7 @@ async function handleParentLogin(e) {
     let student = null;
     try {
         // محاولة جلب الطالب مباشرة من السيرفر لضمان دقة البيانات والطلاب الجدد
-        const res = await fetch(`/api/students/${enteredId}`);
+        const res = await fetch(API_BASE + `/api/students/${enteredId}`);
         if (res.ok) {
             const cloudStudent = await res.json();
             if (cloudStudent) {
@@ -182,7 +187,7 @@ async function handleParentLogin(e) {
     // جلب جميع الأبناء الآخرين المرتبطين بهذا الهاتف سحابياً ومحلياً
     let siblings = [];
     try {
-        const res = await fetch(`/api/students/by-phone/${encodeURIComponent(enteredPhone)}`);
+        const res = await fetch(API_BASE + `/api/students/by-phone/${encodeURIComponent(enteredPhone)}`);
         if (res.ok) {
             const cloudSiblings = await res.json();
             if (Array.isArray(cloudSiblings) && cloudSiblings.length > 0) {
@@ -783,8 +788,8 @@ function openMessageDetail(msgId, isGeneral) {
             if (msg && !msg.read) {
                 msg.read = true;
                 syncStudentData(student);
-                // تحديث حالة قراءة الرسائل الخاصة سحابياً في MongoDB
-                fetch(`/api/students/${student.id}/private-messages/read`, { method: "PATCH" })
+                // تحديث حالة قراءة الرسائل الخاصة سحابياً في Supabase (PostgreSQL)
+                fetch(API_BASE + `/api/students/${student.id}/private-messages/read`, { method: "PATCH" })
                     .catch(err => console.warn("فشل تحديث حالة قراءة الرسائل سحابياً:", err));
             }
         }
@@ -1454,7 +1459,7 @@ async function syncParentStatsWithCloud(phone) {
 
     try {
         // 2. جلب البيانات من السيرفر
-        const res = await fetch(`/api/parent-stats/${phone}`);
+        const res = await fetch(API_BASE + `/api/parent-stats/${phone}`);
         if (res.ok) {
             const cloudStats = await res.json();
             
@@ -1512,7 +1517,7 @@ async function syncParentStatsWithCloud(phone) {
 // دالة لرفع إحصائيات ولي الأمر للسيرفر
 async function uploadParentStatsToCloud(phone, stats) {
     try {
-        await fetch(`/api/parent-stats/${phone}`, {
+        await fetch(API_BASE + `/api/parent-stats/${phone}`, {
             method: "POST",
             headers: { "Accept": "application/json", "Content-Type": "application/json" },
             body: JSON.stringify(stats)
@@ -1557,7 +1562,7 @@ async function pollCloudSync() {
 
     try {
         // 1. مزامنة وجلب الإعلانات العامة من السيرفر
-        const genRes = await fetch("/api/general-messages");
+        const genRes = await fetch(API_BASE + "/api/general-messages");
         if (genRes.ok) {
             const cloudMsgs = await genRes.json();
             if (Array.isArray(cloudMsgs)) {
@@ -1566,7 +1571,7 @@ async function pollCloudSync() {
         }
 
         // 2. جلب جميع أبناء ولي الأمر باستخدام رقم الجوال مباشرةً من السيرفر (أكثر دقة وشمولًا)
-        const byPhoneRes = await fetch(`/api/students/by-phone/${encodeURIComponent(parentSession.parentPhone)}`);
+        const byPhoneRes = await fetch(API_BASE + `/api/students/by-phone/${encodeURIComponent(parentSession.parentPhone)}`);
         if (byPhoneRes.ok) {
             const cloudChildren = await byPhoneRes.json();
             if (Array.isArray(cloudChildren) && cloudChildren.length > 0) {
@@ -1592,7 +1597,7 @@ async function pollCloudSync() {
             // احتياطي: جلب كل طالب من القائمة المحفوظة بالمعرف إن فشل المسار الجديد
             if (parentSession.studentIds && parentSession.studentIds.length > 0) {
                 const fetchPromises = parentSession.studentIds.map(async (sid) => {
-                    const res = await fetch(`/api/students/${sid}`);
+                    const res = await fetch(API_BASE + `/api/students/${sid}`);
                     if (res.ok) {
                         const cloudStudent = await res.json();
                         if (cloudStudent) return { id: sid, data: cloudStudent };
