@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
         parentSession = saved;
         activeChildId = saved.studentIds[0];
         showHome();
-        triggerParentGamification(parentSession.parentPhone);
+        initParentGamification(parentSession.parentPhone);
         initCloudSyncAndNotifications();
     } else {
         showLogin();
@@ -117,7 +117,7 @@ function prefillFromUrl() {
 // ==========================================
 // 4. نظام المصادقة المزدوجة
 // ==========================================
-function handleParentLogin(e) {
+async function handleParentLogin(e) {
     e.preventDefault();
 
     const enteredId    = document.getElementById("p-student-id").value.trim();
@@ -128,8 +128,42 @@ function handleParentLogin(e) {
         return;
     }
 
-    // البحث عن الطالب بالهوية
-    const student = allStudents.find(s => String(s.id).trim() === enteredId);
+    // عرض تنبيه بالتحقق السحابي
+    const errorEl = document.getElementById("login-error");
+    const errorSpan = document.getElementById("login-error-text");
+    if (errorEl && errorSpan) {
+        errorSpan.textContent = "جاري التحقق من البيانات والاتصال بالسحابة...";
+        errorEl.className = "login-error-box info"; // كلاس معلومات جميل
+        errorEl.style.display = "flex";
+    }
+
+    let student = null;
+    try {
+        // محاولة جلب الطالب مباشرة من السيرفر لضمان دقة البيانات والطلاب الجدد
+        const res = await fetch(`/api/students/${enteredId}`);
+        if (res.ok) {
+            const cloudStudent = await res.json();
+            if (cloudStudent) {
+                student = cloudStudent;
+                // تحديث أو إضافة الطالب في القائمة المحلية
+                const idx = allStudents.findIndex(s => String(s.id) === String(enteredId));
+                if (idx !== -1) {
+                    allStudents[idx] = cloudStudent;
+                } else {
+                    allStudents.push(cloudStudent);
+                }
+                localStorage.setItem(STUDENTS_KEY, JSON.stringify(allStudents));
+            }
+        }
+    } catch (err) {
+        console.warn("❌ تعذر الاتصال بالسيرفر للمصادقة السحابية، سيتم استخدام البيانات المحلية:", err);
+    }
+
+    // إذا فشل جلب الطالب من السيرفر، نبحث عنه محلياً
+    if (!student) {
+        student = allStudents.find(s => String(s.id).trim() === enteredId);
+    }
+
     if (!student) {
         showLoginError("رقم الهوية غير مسجل في قاعدة بيانات المدرسة.");
         return;
@@ -142,8 +176,37 @@ function handleParentLogin(e) {
         return;
     }
 
-    // جمع جميع الأبناء المشتركين في نفس رقم الجوال
-    const siblings = allStudents.filter(s => normalizePhone(s.parentPhone || s.phone || "") === enteredPhone);
+    // إخفاء رسالة التحقق المؤقتة
+    if (errorEl) errorEl.style.display = "none";
+
+    // جلب جميع الأبناء الآخرين المرتبطين بهذا الهاتف سحابياً ومحلياً
+    let siblings = [];
+    try {
+        const res = await fetch(`/api/students/by-phone/${encodeURIComponent(enteredPhone)}`);
+        if (res.ok) {
+            const cloudSiblings = await res.json();
+            if (Array.isArray(cloudSiblings) && cloudSiblings.length > 0) {
+                siblings = cloudSiblings;
+                // دمجهم وتحديثهم في القائمة المحلية
+                cloudSiblings.forEach(cs => {
+                    const idx = allStudents.findIndex(s => String(s.id) === String(cs.id));
+                    if (idx !== -1) {
+                        allStudents[idx] = cs;
+                    } else {
+                        allStudents.push(cs);
+                    }
+                });
+                localStorage.setItem(STUDENTS_KEY, JSON.stringify(allStudents));
+            }
+        }
+    } catch (err) {
+        console.warn("❌ فشل جلب الأبناء من السيرفر:", err);
+    }
+
+    // إذا لم ينجح جلب الأبناء سحابياً، نعتمد على التصفية المحلية كاحتياطي آمن
+    if (siblings.length === 0) {
+        siblings = allStudents.filter(s => normalizePhone(s.parentPhone || s.phone || "") === enteredPhone);
+    }
 
     // استخراج اسم ولي الأمر من بيانات الطالب
     const parentName = student.parentName || extractParentName(student.name);
@@ -159,7 +222,7 @@ function handleParentLogin(e) {
 
     activeChildId = String(student.id);
     showHome();
-    triggerParentGamification(enteredPhone);
+    initParentGamification(enteredPhone);
     initCloudSyncAndNotifications();
 }
 
@@ -720,6 +783,9 @@ function openMessageDetail(msgId, isGeneral) {
             if (msg && !msg.read) {
                 msg.read = true;
                 syncStudentData(student);
+                // تحديث حالة قراءة الرسائل الخاصة سحابياً في MongoDB
+                fetch(`/api/students/${student.id}/private-messages/read`, { method: "PATCH" })
+                    .catch(err => console.warn("فشل تحديث حالة قراءة الرسائل سحابياً:", err));
             }
         }
     }
@@ -1098,10 +1164,11 @@ function awardParentEngagementStar(reason, phone, extra = {}) {
     if (starAwarded > 0) {
         stats.starCount = (stats.starCount || 0) + starAwarded;
 
-        // حفظ البيانات
+        // حفظ البيانات محلياً وسحابياً
         try {
             localStorage.setItem(statsKey, JSON.stringify(stats));
         } catch (e) {}
+        uploadParentStatsToCloud(phone, stats);
 
         // تحديث الواجهة
         const countEl = document.getElementById("p-stars-count");
@@ -1123,6 +1190,7 @@ function awardParentEngagementStar(reason, phone, extra = {}) {
         try {
             localStorage.setItem(statsKey, JSON.stringify(stats));
         } catch (e) {}
+        uploadParentStatsToCloud(phone, stats);
     }
 }
 
@@ -1201,10 +1269,11 @@ function triggerParentGamification(parentPhone) {
         }
     }
 
-    // حفظ البيانات المحدثة
+    // حفظ البيانات المحدثة محلياً وسحابياً
     try {
         localStorage.setItem(statsKey, JSON.stringify(stats));
     } catch (e) {}
+    uploadParentStatsToCloud(parentPhone, stats);
 
     // تحديث النجمة في لوحة المعلومات
     const countEl = document.getElementById("p-stars-count");
@@ -1367,13 +1436,100 @@ function initStarburstAnimation() {
     animate();
 }
 
-// ==========================================================================
-// 14. نظام المزامنة السحابية والإشعارات لولي الأمر (Cloud Sync & Notifications)
-// ==========================================================================
-const CLOUD_APP_KEY = "x3odkkjc";
-const CLOUD_API_GET = `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${CLOUD_APP_KEY}`;
+// \u062f\u0627\u0644\u0629 \u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0625\u062d\u0635\u0627\u0626\u064a\u0627\u062a \u0648\u0646\u062c\u0648\u0645 \u0648\u0644\u064a \u0627\u0644\u0623\u0645\u0631 \u0645\u0639 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0633\u062d\u0627\u0628\u064a\u0629
+async function syncParentStatsWithCloud(phone) {
+    if (!phone) return null;
+    const statsKey = `ajaweed_parent_stats_${phone}`;
+    
+    // 1. \u062c\u0644\u0628 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0645\u062d\u0644\u064a\u0629 \u0623\u0648\u0644\u0627\u064b
+    let localStats = null;
+    try {
+        const stored = localStorage.getItem(statsKey);
+        if (stored) {
+            localStats = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error("\u062e\u0637\u0623 \u0641\u064a \u0642\u0631\u0627\u0621\u0629 \u0625\u062d\u0635\u0627\u0626\u064a\u0627\u062a \u0627\u0644\u062a\u0641\u0627\u0639\u0644 \u0627\u0644\u0645\u062d\u0644\u064a\u0629:", e);
+    }
 
-let pollingIntervalId = null;
+    try {
+        // 2. جلب البيانات من السيرفر
+        const res = await fetch(`/api/parent-stats/${phone}`);
+        if (res.ok) {
+            const cloudStats = await res.json();
+            
+            if (cloudStats) {
+                // دمج البيانات: نأخذ القيمة الأكبر لعدد النجوم لضمان عدم ضياع أي تقدم
+                let mergedStats = { ...cloudStats };
+                
+                if (localStats) {
+                    if ((localStats.starCount || 0) > (cloudStats.starCount || 0)) {
+                        // إذا كانت النجوم المحلية أكبر (مثلاً كسب نجمة في وضع عدم الاتصال)، نعتمدها ونقوم برفعها للسيرفر
+                        mergedStats.starCount = localStats.starCount;
+                        mergedStats.dailyOpensStarsAwarded = Math.max(localStats.dailyOpensStarsAwarded || 0, cloudStats.dailyOpensStarsAwarded || 0);
+                        mergedStats.dailyReadsStarsAwarded = Math.max(localStats.dailyReadsStarsAwarded || 0, cloudStats.dailyReadsStarsAwarded || 0);
+                        mergedStats.dailyAttendanceStarsAwarded = Math.max(localStats.dailyAttendanceStarsAwarded || 0, cloudStats.dailyAttendanceStarsAwarded || 0);
+                        
+                        // دمج قائمة الرسائل المقروءة
+                        const localReadIds = localStats.readMessageIds || [];
+                        const cloudReadIds = cloudStats.readMessageIds || [];
+                        mergedStats.readMessageIds = [...new Set([...localReadIds, ...cloudReadIds])];
+                        
+                        // رفع التحديث للسيرفر
+                        await uploadParentStatsToCloud(phone, mergedStats);
+                    } else {
+                        // إذا كانت النجوم السحابية أكبر أو متساوية، نعتمد السحابية ودعم دمج الرسائل المقروءة
+                        const localReadIds = localStats.readMessageIds || [];
+                        const cloudReadIds = cloudStats.readMessageIds || [];
+                        mergedStats.readMessageIds = [...new Set([...localReadIds, ...cloudReadIds])];
+                    }
+                }
+                
+                // حفظ النتيجة في localStorage
+                localStorage.setItem(statsKey, JSON.stringify(mergedStats));
+                
+                // تحديث الواجهة الرسومية بالرتبة والنجوم الجديدة
+                const countEl = document.getElementById("p-stars-count");
+                if (countEl) countEl.textContent = mergedStats.starCount;
+
+                const rankInfo = getParentRank(mergedStats.starCount);
+                const rankEl = document.getElementById("p-stars-rank");
+                if (rankEl) {
+                    rankEl.textContent = rankInfo.text;
+                    rankEl.style.color = rankInfo.color;
+                }
+                
+                return mergedStats;
+            }
+        }
+    } catch (err) {
+        console.warn("فشل الاتصال بالسيرفر لمزامنة النجوم، سيتم الاستمرار محلياً:", err);
+    }
+    
+    return localStats;
+}
+
+// دالة لرفع إحصائيات ولي الأمر للسيرفر
+async function uploadParentStatsToCloud(phone, stats) {
+    try {
+        await fetch(`/api/parent-stats/${phone}`, {
+            method: "POST",
+            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify(stats)
+        });
+    } catch (e) {
+        console.warn("فشل رفع إحصائيات ولي الأمر للسيرفر:", e);
+    }
+}
+
+// دالة تهيئة وبدء التفاعل اليومي
+async function initParentGamification(parentPhone) {
+    if (!parentPhone) return;
+    // 1. مزامنة النجوم من السحابية أولاً
+    await syncParentStatsWithCloud(parentPhone);
+    // 2. تشغيل منطق التفاعل ومكافأة الدخول اليومي
+    triggerParentGamification(parentPhone);
+}
 
 function initCloudSyncAndNotifications() {
     // طلب صلاحية الإشعارات
@@ -1391,7 +1547,7 @@ function initCloudSyncAndNotifications() {
 }
 
 async function pollCloudSync() {
-    if (!parentSession || !parentSession.studentIds || parentSession.studentIds.length === 0) {
+    if (!parentSession || !parentSession.parentPhone) {
         if (pollingIntervalId) {
             clearInterval(pollingIntervalId);
             pollingIntervalId = null;
@@ -1400,83 +1556,85 @@ async function pollCloudSync() {
     }
 
     try {
-        // 1. مزامنة وجلب الإعلانات العامة
-        const genRes = await fetch(`${CLOUD_API_GET}/gen_msgs`);
+        // 1. مزامنة وجلب الإعلانات العامة من السيرفر
+        const genRes = await fetch("/api/general-messages");
         if (genRes.ok) {
-            const rawGen = await genRes.text();
-            if (rawGen && rawGen !== "null") {
-                processSyncedGeneralMessages(rawGen);
+            const cloudMsgs = await genRes.json();
+            if (Array.isArray(cloudMsgs)) {
+                processSyncedGeneralMessages(cloudMsgs);
             }
         }
 
-        // 2. مزامنة وجلب الأبناء (الإخوة) بشكل متوازٍ
-        const fetchPromises = parentSession.studentIds.map(async (sid) => {
-            const res = await fetch(`${CLOUD_API_GET}/s_${sid}`);
-            if (res.ok) {
-                const rawVal = await res.text();
-                if (rawVal && rawVal !== "null") {
-                    return { id: sid, val: rawVal };
+        // 2. جلب جميع أبناء ولي الأمر باستخدام رقم الجوال مباشرةً من السيرفر (أكثر دقة وشمولًا)
+        const byPhoneRes = await fetch(`/api/students/by-phone/${encodeURIComponent(parentSession.parentPhone)}`);
+        if (byPhoneRes.ok) {
+            const cloudChildren = await byPhoneRes.json();
+            if (Array.isArray(cloudChildren) && cloudChildren.length > 0) {
+                // تحديث قائمة معرفات الأبناء في الجلسة بالبيانات السحابية
+                const cloudIds = cloudChildren.map(s => String(s.id));
+                let sessionUpdated = false;
+                cloudIds.forEach(cid => {
+                    if (!parentSession.studentIds.includes(cid)) {
+                        parentSession.studentIds.push(cid);
+                        sessionUpdated = true;
+                    }
+                });
+                if (sessionUpdated) {
+                    saveSession(parentSession);
                 }
-            }
-            return { id: sid, val: null };
-        });
 
-        const results = await Promise.all(fetchPromises);
-        results.forEach(result => {
-            if (result.val) {
-                processSyncedStudent(result.id, result.val);
+                // معالجة كل طالب بشكل منفصل
+                cloudChildren.forEach(cloudStudent => {
+                    processSyncedStudent(String(cloudStudent.id), cloudStudent);
+                });
             }
-        });
+        } else {
+            // احتياطي: جلب كل طالب من القائمة المحفوظة بالمعرف إن فشل المسار الجديد
+            if (parentSession.studentIds && parentSession.studentIds.length > 0) {
+                const fetchPromises = parentSession.studentIds.map(async (sid) => {
+                    const res = await fetch(`/api/students/${sid}`);
+                    if (res.ok) {
+                        const cloudStudent = await res.json();
+                        if (cloudStudent) return { id: sid, data: cloudStudent };
+                    }
+                    return { id: sid, data: null };
+                });
+                const results = await Promise.all(fetchPromises);
+                results.forEach(result => {
+                    if (result.data) processSyncedStudent(result.id, result.data);
+                });
+            }
+        }
+
+        // 3. مزامنة نقاط النجوم لولي الأمر في الخلفية
+        if (parentSession.parentPhone) {
+            await syncParentStatsWithCloud(parentSession.parentPhone);
+        }
 
     } catch (err) {
-        console.warn("خطأ في المزامنة السحابية:", err);
+        console.warn("خطأ في المزامنة السحابية مع قاعدة البيانات:", err);
     }
 }
 
-// دالة فك ترميز حروف اليونيكود غير الأسكي المسترجعة من السحابة لضمان عرض الحروف العربية بشكل سليم 100%
-function safeDecodeUnicode(str) {
-    if (!str) return "";
-    return str.replace(/~u([0-9a-fA-F]{4})/g, (match, hex) => {
-        return String.fromCharCode(parseInt(hex, 16));
-    });
-}
+function processSyncedGeneralMessages(cloudMsgs) {
+    if (!Array.isArray(cloudMsgs)) return;
 
-function safeParseKeyValue(raw) {
-    if (!raw) return null;
-    let s = raw.trim();
-    // فك التعليفة الخارجية إذا كان النص محاطاً بعلامات اقتباس
-    if (s.startsWith('"') && s.endsWith('"')) {
-        try { s = JSON.parse(s); } catch {}
-    }
-    // فك ترميز ~uXXXX أولاً لاستعادة الحروف العربية
-    s = safeDecodeUnicode(s);
-    // محاولة تحليل الJSON مباشرة
-    try { return JSON.parse(s); } catch {}
-    // كحل احتياطي فقط للملفات القديمة جداً التي كانت تستخدم ~ بدلاً من :
-    // نستبدل فقط ~ التي ليست جزءاً من الكلمات العربية (أي التي تكون بين حرفين ASCII)
-    const legacyFixed = s.replace(/([\x00-\x7F])~([\x00-\x7F])/g, '$1:$2');
-    try { return JSON.parse(legacyFixed); } catch { return null; }
-}
-
-function processSyncedGeneralMessages(rawVal) {
-    const rawCloudMsgs = safeParseKeyValue(rawVal);
-    if (!Array.isArray(rawCloudMsgs)) return;
-
-    // تمديد المفاتيح القصيرة المستلمة من السحابة إلى المفاتيح الكاملة لتتطابق مع النظام المحلي
-    const cloudMsgs = rawCloudMsgs.map(m => {
+    // تمديد وتوحيد المفاتيح لتتطابق مع النظام المحلي
+    const formattedMsgs = cloudMsgs.map(m => {
         let attachment = null;
-        if (m.att) {
+        const att = m.attachment || m.att;
+        if (att) {
             attachment = {
-                type: m.att.t || m.att.type || "image",
-                name: m.att.n || m.att.name || "",
-                data: m.att.d || m.att.data || "[Base64]"
+                type: att.type || att.t || "image",
+                name: att.name || att.n || "",
+                data: att.data || att.d || "[Base64]"
             };
         }
         return {
             id: m.id,
-            title: m.t || m.title || "إعلان عام",
-            text: m.txt || m.text || m.body || m.message || "",
-            date: m.dt || m.date,
+            title: m.title || m.t || "إعلان عام",
+            text: m.text || m.txt || m.body || m.message || "",
+            date: m.date || m.dt,
             attachment: attachment
         };
     });
@@ -1492,8 +1650,8 @@ function processSyncedGeneralMessages(rawVal) {
 
     let updated = false;
     
-    // فحص الرسائل القادمة من السحابة وعرض الإشعار للجديد منها
-    cloudMsgs.reverse().forEach(cm => {
+    // فحص الرسائل القادمة وعرض الإشعار للجديد منها
+    formattedMsgs.reverse().forEach(cm => {
         const exists = localMsgs.some(lm => String(lm.id) === String(cm.id));
         if (!exists) {
             localMsgs.unshift(cm);
@@ -1501,7 +1659,7 @@ function processSyncedGeneralMessages(rawVal) {
 
             showScreenNotification(
                 "📢 إعلان عام جديد من إدارة المدرسة",
-                cm.title + ": " + (cm.text || cm.body || cm.message || "")
+                cm.title + ": " + (cm.text || "")
             );
         }
     });
@@ -1514,39 +1672,43 @@ function processSyncedGeneralMessages(rawVal) {
     }
 }
 
-function processSyncedStudent(studentId, rawVal) {
-    const cloudStudentShort = safeParseKeyValue(rawVal);
+function processSyncedStudent(studentId, cloudStudentShort) {
     if (!cloudStudentShort || String(cloudStudentShort.id) !== String(studentId)) return;
 
-    // تمديد المفاتيح القصيرة المستلمة من السحابة إلى المفاتيح الكاملة لتتطابق مع قاعدة البيانات المحلية
+    // تمديد وتوحيد المفاتيح لتتطابق مع قاعدة البيانات المحلية
     const cloudStudent = {
         id: cloudStudentShort.id,
-        attendance: cloudStudentShort.att || "none",
-        attendanceTime: cloudStudentShort.time || "",
-        morningDelayMinutes: cloudStudentShort.delay || 0,
-        earlyDaysCount: cloudStudentShort.early || 0,
-        lateDaysCount: cloudStudentShort.late || 0,
-        absentDaysCount: cloudStudentShort.absent || 0,
-        attendanceHistory: (cloudStudentShort.hist || []).map(h => ({
-            date: h.d,
-            status: h.s,
-            time: h.t,
-            delay: h.dy || 0
+        name: cloudStudentShort.name || '',
+        grade: cloudStudentShort.grade || '',
+        parentName: cloudStudentShort.parentName || cloudStudentShort.parent_name || '',
+        parentPhone: cloudStudentShort.parentPhone || cloudStudentShort.parent_phone || '',
+        attendance: cloudStudentShort.attendance || cloudStudentShort.att || "none",
+        attendanceTime: cloudStudentShort.attendanceTime || cloudStudentShort.time || "",
+        morningDelayMinutes: cloudStudentShort.morningDelayMinutes || cloudStudentShort.delay || 0,
+        earlyDaysCount: cloudStudentShort.earlyDaysCount || cloudStudentShort.early || 0,
+        lateDaysCount: cloudStudentShort.lateDaysCount || cloudStudentShort.late || 0,
+        absentDaysCount: cloudStudentShort.absentDaysCount || cloudStudentShort.absent || 0,
+        attendanceHistory: (cloudStudentShort.attendanceHistory || cloudStudentShort.hist || []).map(h => ({
+            date: h.date || h.d,
+            status: h.status || h.s,
+            time: h.time || h.t,
+            delay: h.delay || h.dy || 0
         })),
-        privateMessages: (cloudStudentShort.msgs || []).map(m => {
+        privateMessages: (cloudStudentShort.privateMessages || cloudStudentShort.msgs || []).map(m => {
             let attachment = null;
-            if (m.att) {
+            const att = m.attachment || m.att;
+            if (att) {
                 attachment = {
-                    type: m.att.t || m.att.type || "image",
-                    name: m.att.n || m.att.name || "",
-                    data: m.att.d || m.att.data || "[Base64]"
+                    type: att.type || att.t || "image",
+                    name: att.name || att.n || "",
+                    data: att.data || att.d || "[Base64]"
                 };
             }
             return {
                 id: m.id,
-                text: m.txt || m.text || m.message || "",
-                date: m.dt || m.date,
-                read: m.rd !== undefined ? m.rd : (m.read || false),
+                text: m.text || m.txt || m.message || "",
+                date: m.date || m.dt,
+                read: m.read !== undefined ? m.read : (m.rd !== undefined ? m.rd : false),
                 attachment: attachment
             };
         })
@@ -1554,7 +1716,7 @@ function processSyncedStudent(studentId, rawVal) {
 
     const localIdx = allStudents.findIndex(s => String(s.id) === String(studentId));
     if (localIdx === -1) {
-        // الطالب غير موجود في localStorage — أضفه ببيانات السحابة مع بيانات مبدئية من INITIAL_STUDENTS
+        // الطالب غير موجود في localStorage — أضفه ببيانات السحابية مع بيانات مبدئية من INITIAL_STUDENTS
         const initialRef = typeof INITIAL_STUDENTS !== "undefined"
             ? INITIAL_STUDENTS.find(s => String(s.id) === String(studentId))
             : null;
@@ -1579,6 +1741,24 @@ function processSyncedStudent(studentId, rawVal) {
 
     const localStudent = allStudents[localIdx];
     let updated = false;
+
+    // 0. مزامنة البيانات التعريفية للطالب في حال تحديثها من قبل الإدارة
+    if (cloudStudent.name && cloudStudent.name !== localStudent.name) {
+        localStudent.name = cloudStudent.name;
+        updated = true;
+    }
+    if (cloudStudent.grade && cloudStudent.grade !== localStudent.grade) {
+        localStudent.grade = cloudStudent.grade;
+        updated = true;
+    }
+    if (cloudStudent.parentName && cloudStudent.parentName !== localStudent.parentName) {
+        localStudent.parentName = cloudStudent.parentName;
+        updated = true;
+    }
+    if (cloudStudent.parentPhone && cloudStudent.parentPhone !== localStudent.parentPhone) {
+        localStudent.parentPhone = cloudStudent.parentPhone;
+        updated = true;
+    }
 
     // 1. مقارنة حالة الحضور والوقت
     if (cloudStudent.attendance && cloudStudent.attendance !== localStudent.attendance) {
@@ -1669,13 +1849,9 @@ function processSyncedStudent(studentId, rawVal) {
         cloudStudent.privateMessages.reverse().forEach(cm => {
             const exists = localStudent.privateMessages.some(lm => String(lm.id) === String(cm.id));
             if (!exists) {
-                // إذا كان المرفق لديه Base64 مفقود بسبب الحد الأقصى للمزامنة، نضع له رابطاً جميلاً
+                // وضع رابط افتراضي راقٍ إذا كان المرفق فارغاً أو محذوفاً
                 if (cm.attachment && cm.attachment.data === "[Base64]") {
-                    if (cm.attachment.type === "image") {
-                        cm.attachment.data = "ajaweed_logo_1779318974019.png";
-                    } else if (cm.attachment.type === "pdf") {
-                        cm.attachment.data = "ajaweed_logo_1779318974019.png"; 
-                    }
+                    cm.attachment.data = "ajaweed_logo_1779318974019.png";
                 }
                 
                 localStudent.privateMessages.unshift(cm);
@@ -1683,7 +1859,7 @@ function processSyncedStudent(studentId, rawVal) {
 
                 showScreenNotification(
                     `💬 رسالة خاصة جديدة: ${localStudent.name}`,
-                    cm.text || cm.message || ""
+                    cm.text || ""
                 );
                 playNotificationChime();
             }

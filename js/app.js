@@ -203,6 +203,47 @@ function getFormattedArabicDateTime(dateObj = new Date()) {
     return `${yyyy}-${mm}-${dd} ${hr}:${minutes} ${ampm}`;
 }
 
+// توحيد وتطبيع صيغ التاريخ المتنوعة لـ YYYY-MM-DD
+function normalizeDateString(rawDateStr) {
+    if (!rawDateStr) return "";
+    let str = String(rawDateStr).trim();
+    if (str.includes("T")) {
+        str = str.split("T")[0];
+    }
+    // إزالة أسماء الأيام باللغة العربية أو أي نصوص أخرى
+    str = str.replace(/[أ-يa-zA-Z\s]/g, "");
+    // تحويل الأرقام الهندية/العربية إلى الإنجليزية
+    str = str.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+    
+    // تقسيم النص بناءً على الفواصل الشائعة (dash, slash, dot, underscore)
+    const parts = str.split(/[-/._]/).filter(Boolean);
+    if (parts.length === 3) {
+        let day, month, year;
+        if (parts[0].length === 4) {
+            // YYYY-MM-DD
+            year = parts[0];
+            month = parts[1];
+            day = parts[2];
+        } else if (parts[2].length === 4) {
+            // DD-MM-YYYY
+            day = parts[0];
+            month = parts[1];
+            year = parts[2];
+        } else {
+            return str;
+        }
+        
+        const yyyy = year;
+        const mm = String(parseInt(month, 10)).padStart(2, '0');
+        const dd = String(parseInt(day, 10)).padStart(2, '0');
+        
+        if (yyyy && mm && dd && !isNaN(yyyy) && !isNaN(mm) && !isNaN(dd)) {
+            return `${yyyy}-${mm}-${dd}`;
+        }
+    }
+    return str;
+}
+
 // تحليل دقيق للتاريخ والوقت الفعلي القادم من الإكسل
 function parseExcelDateTime(rawDate, rawTime) {
     let dateStr = "";
@@ -219,8 +260,13 @@ function parseExcelDateTime(rawDate, rawTime) {
                 const dd = String(dateObj.getDate()).padStart(2, '0');
                 dateStr = `${yyyy}-${mm}-${dd}`;
             }
+        } else if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+            const yyyy = rawDate.getFullYear();
+            const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(rawDate.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd}`;
         } else {
-            dateStr = String(rawDate).trim();
+            dateStr = normalizeDateString(rawDate);
         }
     }
 
@@ -299,9 +345,9 @@ function initDatabase() {
             }
         });
 
-        // 3. تحويل الحضور التلقائي القديم بدون وقت رصد إلى "لم يرصد" (none)
+        // 3. تحويل الحضور التلقائي القديم بدون وقت رصد إلى "لم يرصد" (none) إن لم يكن هناك أرشيف
         students.forEach(s => {
-            if ((s.attendance === "present" || !s.attendance) && !s.attendanceTime) {
+            if ((s.attendance === "present" || !s.attendance) && !s.attendanceTime && (!s.attendanceHistory || s.attendanceHistory.length === 0)) {
                 s.attendance = "none";
                 migrated = true;
             }
@@ -374,12 +420,41 @@ function initDatabase() {
     // تحديث كافة عناصر واجهة المستخدم
     refreshUI();
     
-    // إعادة مزامنة سحابية شاملة بعد 3 ثوانٍ من فتح التطبيق لضمان وصول البيانات لأولياء الأمور
-    setTimeout(() => {
-        if (typeof forceResyncAllToCloud === "function") {
-            forceResyncAllToCloud();
-        }
-    }, 3000);
+    // جلب البيانات الأحدث من السيرفر (قاعدة بيانات MongoDB) فور فتح التطبيق
+    fetch("/api/students")
+        .then(res => {
+            if (res.ok) return res.json();
+            throw new Error("API error");
+        })
+        .then(cloudStudents => {
+            if (cloudStudents && cloudStudents.length > 0) {
+                students = cloudStudents;
+                localStorage.setItem("ajaweed_students", JSON.stringify(students));
+                refreshUI();
+                
+                // تعيين الطالب النشط مجدداً بعد تحميل البيانات من السيرفر
+                if (students.length > 0) {
+                    const firstInstalled = students.find(s => s.status === "installed") || students[0];
+                    currentStudentId = firstInstalled.id;
+                    refreshMobileSimulator();
+                }
+            }
+        })
+        .catch(err => console.warn("تعذر جلب الطلاب من السيرفر، تم استخدام النسخة الاحتياطية المحلية:", err));
+
+    fetch("/api/general-messages")
+        .then(res => {
+            if (res.ok) return res.json();
+            throw new Error("API error");
+        })
+        .then(cloudGeneral => {
+            if (cloudGeneral && cloudGeneral.length > 0) {
+                generalMessages = cloudGeneral;
+                localStorage.setItem("ajaweed_general_messages", JSON.stringify(generalMessages));
+                refreshUI();
+            }
+        })
+        .catch(err => console.warn("تعذر جلب الرسائل العامة من السيرفر، تم استخدام النسخة الاحتياطية المحلية:", err));
 }
 
 // مزامنة البيانات مع الـ Local Storage
@@ -391,26 +466,58 @@ function syncData() {
 
 // إعادة مزامنة شاملة لجميع الطلاب إلى السحابة (لضمان وصول البيانات لأولياء الأمور)
 function forceResyncAllToCloud() {
-    if (!students || students.length === 0) return;
+    if (!students || students.length === 0) return Promise.resolve();
     
     // مزامنة الإعلانات العامة أولاً
     if (typeof syncGeneralMessagesToCloud === "function") {
         syncGeneralMessagesToCloud();
     }
     
-    // مزامنة الطلاب تدريجياً بفارق 200ms بين كل طالب لتجنب الضغط على الخادم
-    let idx = 0;
-    function syncNext() {
-        if (idx >= students.length) return;
-        const s = students[idx++];
-        // تأكد من العدادات قبل المزامنة
-        ensureStudentCounters(s);
-        if (typeof syncStudentToCloud === "function") {
-            syncStudentToCloud(s);
+    // تأمين العدادات لجميع الطلاب قبل الإرسال المجمع
+    students.forEach(s => ensureStudentCounters(s));
+    
+    // رفع كامل قائمة الطلاب إلى الخادم دفعة واحدة لتحسين الأداء
+    return fetch('/api/students/bulk', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ students: students })
+    })
+    .then(res => {
+        if (!res.ok) {
+            console.error("❌ فشلت المزامنة الشاملة للطلاب سحابياً:", res.statusText);
+            throw new Error("فشلت المزامنة السحابية: " + res.statusText);
         }
-        setTimeout(syncNext, 200);
-    }
-    syncNext();
+        return res.json();
+    })
+    .catch(err => {
+        console.error("❌ خطأ في الاتصال للمزامنة الشاملة للطلاب:", err);
+        throw err;
+    });
+}
+
+// مزامنة قائمة محددة من الطلاب إلى السحابة (تُستخدم لتحديث الحضور اليومي للمعدلين فقط بشكل فائق السرعة)
+function syncStudentsListToCloud(list) {
+    if (!list || list.length === 0) return Promise.resolve();
+    
+    // تأمين العدادات للطلاب المحددين قبل الإرسال
+    list.forEach(s => ensureStudentCounters(s));
+    
+    return fetch('/api/students/bulk', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ students: list })
+    })
+    .then(res => {
+        if (!res.ok) {
+            console.error("❌ فشلت المزامنة السحابية للطلاب:", res.statusText);
+            throw new Error("فشلت المزامنة السحابية: " + res.statusText);
+        }
+        return res.json();
+    })
+    .catch(err => {
+        console.error("❌ خطأ في الاتصال لمزامنة الطلاب:", err);
+        throw err;
+    });
 }
 
 // إعادة ضبط النظام كاملاً للقيم الأولية
@@ -420,8 +527,52 @@ function resetDatabase() {
         localStorage.removeItem("ajaweed_general_messages");
         localStorage.setItem("ajaweed_sent_count", "0");
         
-        showToast("success", "تم إعادة تعيين النظام بنجاح للقيم الافتراضية.");
-        initDatabase();
+        // إرسال طلب تصفير قاعدة البيانات السحابية
+        fetch('/api/database/reset', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confirmCode: "AJAWEED_RESET_2026" })
+        })
+        .then(res => {
+            if (res.ok) {
+                showToast("success", "تم إعادة ضبط النظام للقيم الافتراضية محلياً وسحابياً.");
+            } else {
+                showToast("success", "تم إعادة تعيين النظام محلياً.");
+            }
+            initDatabase();
+        })
+        .catch(err => {
+            showToast("success", "تم إعادة تعيين النظام محلياً.");
+            initDatabase();
+        });
+    }
+}
+
+// تصفير حضور اليوم لجميع الطلاب (يُستخدم في بداية كل يوم دراسي قبل رفع ملف الحضور)
+async function resetTodayAttendance() {
+    if (!confirm("هل تريد تصفير حالة حضور اليوم لجميع الطلاب؟\nسيتم إعادة تعيين جميع الطلاب إلى حالة (لم يُرصد) تمهيداً لرفع ملف الحضور الجديد.")) {
+        return;
+    }
+    try {
+        // 1. تصفير السجل المحلي
+        students.forEach(s => {
+            s.attendance    = "none";
+            s.attendanceTime = "";
+            s.morningDelayMinutes = 0;
+        });
+        syncData();
+        refreshUI();
+
+        // 2. تصفير قاعدة البيانات السحابية
+        const res = await fetch('/api/attendance/reset-today', { method: "POST" });
+        if (res.ok) {
+            showToast("success", "✅ تم تصفير حضور اليوم لجميع الطلاب بنجاح! يمكنك الآن رفع ملف الحضور.");
+        } else {
+            showToast("warning", "تم التصفير محلياً، لكن فشل التصفير السحابي. تحقق من الاتصال.");
+        }
+    } catch (err) {
+        console.error("خطأ في تصفير حضور اليوم:", err);
+        showToast("error", "حدث خطأ في تصفير الحضور: " + err.message);
     }
 }
 
@@ -2238,14 +2389,7 @@ function processDailyAttendance() {
         let updatedCount = 0;
         let importedCount = 0;
         let stats = { early: 0, absent: 0, late: 0 };
-
-        // إعادة تعيين حالة حضور جميع الطلاب إلى "none" قبل المعالجة
-        // لضمان أن فقط الطلاب الموجودين في ملف اليوم يعكسون حالة يومية فعلية
-        students.forEach(s => {
-            s.attendance    = "none";
-            s.attendanceTime = "";
-            s.morningDelayMinutes = 0;
-        });
+        const modifiedStudents = [];
 
         // استخراج تاريخ اليوم كنص لمقارنة السجلات في الأرشيف
         function getDateStr(rawDate) {
@@ -2259,9 +2403,14 @@ function processDailyAttendance() {
                         const dd = String(dateObj.getDate()).padStart(2, '0');
                         return `${yyyy}-${mm}-${dd}`;
                     }
+                } else if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+                    const yyyy = rawDate.getFullYear();
+                    const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(rawDate.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
                 } else {
                     const str = String(rawDate).trim();
-                    if (str) return str;
+                    if (str) return normalizeDateString(str);
                 }
             }
             // تاريخ اليوم كاحتياطي
@@ -2406,14 +2555,23 @@ function processDailyAttendance() {
                     student.attendanceTime = parsedTime;
                     student.morningDelayMinutes = delayMinutes;
 
+                    // تحديث بيانات الصف والاسم ورقم الجوال إن وجد أي تحديث بالإكسل
+                    if (grade && grade !== student.grade) {
+                        student.grade = grade;
+                    }
+                    if (parentName && parentName !== student.parentName) {
+                        student.parentName = parentName;
+                    }
+                    if (mobile && mobile !== student.parentPhone) {
+                        student.parentPhone = mobile;
+                    }
+
                     // إعادة حساب العدادات من الأرشيف الكامل
                     ensureStudentCounters(student);
 
-                    // مزامنة السحابة بعد رصد الحضور من إكسل
-                    if (typeof syncStudentToCloud === "function") {
-                        syncStudentToCloud(student);
+                    if (!modifiedStudents.some(ms => ms.id === student.id)) {
+                        modifiedStudents.push(student);
                     }
-
                     updatedCount++;
                 } else {
                     // إنشاء حساب طالب جديد تلقائياً وإضافته للدليل
@@ -2437,11 +2595,9 @@ function processDailyAttendance() {
 
                     students.push(studentObj);
 
-                    // مزامنة السحابة للطالب الجديد
-                    if (typeof syncStudentToCloud === "function") {
-                        syncStudentToCloud(studentObj);
+                    if (!modifiedStudents.some(ms => ms.id === studentObj.id)) {
+                        modifiedStudents.push(studentObj);
                     }
-
                     importedCount++;
                 }
 
@@ -2463,8 +2619,17 @@ function processDailyAttendance() {
             refreshMobileSimulator();
         }
 
-        // إظهار تنبيه ملخص إحصائي شامل
-        showToast("success", `تم الرصد بنجاح! حضور مبكر: ${stats.early}، غياب: ${stats.absent}، متأخرين: ${stats.late}. (محدّث: ${updatedCount}، مضاف جديد: ${importedCount})`);
+        // إظهار تنبيه المزامنة السحابية الفورية
+        showToast("success", "جاري المزامنة السحابية الفورية للطلاب الذين تم رصدهم...");
+        
+        syncStudentsListToCloud(modifiedStudents)
+        .then(() => {
+            showToast("success", `✅ تم الرصد والمزامنة السحابية بنجاح! حضور مبكر: ${stats.early}، غياب: ${stats.absent}، متأخرين: ${stats.late}. (محدّث: ${updatedCount}، مضاف جديد: ${importedCount})`);
+        })
+        .catch(err => {
+            console.error("❌ فشلت المزامنة السحابية للرصد اليومي:", err);
+            showToast("error", "⚠️ فشلت المزامنة السحابية التلقائية، ولكن تم حفظ البيانات محلياً بنجاح.");
+        });
 
     }).catch(error => {
         console.error(error);
@@ -2477,22 +2642,7 @@ function processDailyAttendance() {
 // ==========================================================================
 
 
-const CLOUD_APP_KEY = "x3odkkjc";
-const CLOUD_API_UPDATE = `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_APP_KEY}`;
-
-// دالة ترميز مخصصة لحروف اليونيكود غير الأسكي إلى شكل آمن ومتوافق 100% مع خوادم IIS ومنع التلف في قاعدة البيانات
-function safeEscapeUnicode(str) {
-    if (!str) return "";
-    return str.split('').map(char => {
-        const code = char.charCodeAt(0);
-        if (code > 127) {
-            return "~u" + code.toString(16).padStart(4, '0');
-        }
-        return char;
-    }).join('');
-}
-
-// طابور لتسلسل عمليات المزامنة السحابية ومنع المشاكل الناتجة عن الاتصالات المتزامنة بكثرة (خصوصاً عند رفع ملفات إكسل)
+// طابور لتسلسل عمليات المزامنة السحابية ومنع المشاكل الناتجة عن الاتصالات المتزامنة بكثرة
 let syncQueue = [];
 let isProcessingSyncQueue = false;
 
@@ -2510,7 +2660,7 @@ function processSyncQueue() {
         setTimeout(() => {
             isProcessingSyncQueue = false;
             processSyncQueue();
-        }, 150); // تأخير 150 مللي ثانية بين كل طلب والآخر ليكون الاتصال رفيقاً بالخادم ويمنع السقوط
+        }, 150); // تأخير 150 مللي ثانية بين كل طلب والآخر
     };
 
     if (task.type === "student") {
@@ -2522,75 +2672,37 @@ function processSyncQueue() {
     }
 }
 
-// مزامنة حالة طالب محدد إلى السحابة (بشكل طابور متسلسل لمنع السقوط والضغط)
+// مزامنة حالة طالب محدد إلى السحابة
 function syncStudentToCloud(student) {
     if (!student || !student.id) return;
-    // تجنب إضافة نفس الطالب مكرراً في الطابور إذا كان موجوداً بالفعل ولم يبدأ معالجته بعد
     const exists = syncQueue.some(q => q.type === "student" && q.data && q.data.id === student.id);
     if (!exists) {
         enqueueSync("student", student);
     }
 }
 
-// العملية الفعلية لمزامنة طالب محدد إلى السحابة
+// العملية الفعلية لمزامنة طالب محدد إلى السحابة (تخزين كامل البيانات بأمان تام ودقة 100%)
 function performSyncStudentToCloud(student, callback) {
     if (!student || !student.id) {
         if (typeof callback === "function") callback();
         return;
     }
     
-    // إعداد البيانات المناسبة للمزامنة وتفادي تجاوز سعة السحاب (نرسل آخر رسالتين لتوفير حماية تكرار)
-    const messages = (student.privateMessages || student.messages || []).slice(0, 2).map(m => {
-        let attachment = null;
-        if (m.attachment) {
-            attachment = {
-                t: m.attachment.type || "image",
-                d: "[Base64]"
-            };
-        }
-        return {
-            id: m.id,
-            txt: (m.text || m.message || "").substring(0, 300), // تقصير معقول للنص
-            dt: m.date,
-            rd: m.read || false,
-            att: attachment
-        };
-    });
-
     ensureStudentCounters(student);
-    const payload = {
-        id: student.id,
-        att: student.attendance || "none",
-        time: student.attendanceTime || "",
-        delay: student.morningDelayMinutes || student.delayMinutes || 0,
-        early: student.earlyDaysCount || 0,
-        late: student.lateDaysCount || 0,
-        absent: student.absentDaysCount || 0,
-        msgs: messages,
-        hist: (student.attendanceHistory || []).slice(0, 60).map(h => ({
-            d: h.date,
-            s: h.status,
-            t: h.time,
-            dy: h.delay || 0
-        }))
-    };
 
-    const key = `s_${student.id}`;
-    // تحويل الكائن إلى نص JSON وترميزه ليكون متوافقاً تماماً مع خوادم IIS
-    const jsonStr = JSON.stringify(payload);
-    const escapedValue = safeEscapeUnicode(jsonStr);
-    
-    // إرسال البيانات عبر معامل الاستعلام ?value لتجنب أي مشاكل في طول المسار أو الرموز الخاصة
-    const url = `${CLOUD_API_UPDATE}/${key}?value=${encodeURIComponent(escapedValue)}`;
-    
-    fetch(url, { method: "POST" })
-        .then(res => {
-            if (!res.ok) console.error("فشلت مزامنة الطالب سحابياً:", res.statusText);
-        })
-        .catch(err => console.error("خطأ في مزامنة الطالب:", err))
-        .finally(() => {
-            if (typeof callback === "function") callback();
-        });
+    // إرسال كائن الطالب كاملاً مع جميع رسائله وسجله دون أي اقتصاص أو ضياع للبيانات والمرفقات
+    fetch('/api/students/bulk', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ students: [student] })
+    })
+    .then(res => {
+        if (!res.ok) console.error("❌ فشلت مزامنة الطالب بقاعدة البيانات سحابياً:", res.statusText);
+    })
+    .catch(err => console.error("❌ خطأ في الاتصال لمزامنة الطالب:", err))
+    .finally(() => {
+        if (typeof callback === "function") callback();
+    });
 }
 
 // مزامنة الإعلانات العامة إلى السحابة
@@ -2601,44 +2713,28 @@ function syncGeneralMessagesToCloud() {
     }
 }
 
-// العملية الفعلية لمزامنة الإعلانات العامة إلى السحابة
+// العملية الفعلية لمزامنة الإعلانات العامة إلى السحابة (كامل الإعلان بدون اقتصاص مع مرفقاته)
 function performSyncGeneralMessagesToCloud(callback) {
-    if (typeof generalMessages === "undefined") {
+    if (!generalMessages || generalMessages.length === 0) {
         if (typeof callback === "function") callback();
         return;
     }
-    const list = generalMessages.slice(0, 1).map(m => {
-        let attachment = null;
-        if (m.attachment) {
-            attachment = {
-                t: m.attachment.type || "image",
-                d: "[Base64]"
-            };
-        }
-        return {
-            id: m.id,
-            t: (m.title || "إعلان عام").substring(0, 100),
-            txt: (m.text || m.body || m.message || "").substring(0, 300),
-            dt: m.date,
-            att: attachment
-        };
+    
+    // جلب الإعلان الأحدث المضاف حديثاً ونشره في خادم الـ API
+    const latestAnn = generalMessages[0];
+    
+    fetch('/api/general-messages', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(latestAnn)
+    })
+    .then(res => {
+        if (!res.ok) console.error("❌ فشلت مزامنة الإعلان العام بقاعدة البيانات:", res.statusText);
+    })
+    .catch(err => console.error("❌ خطأ في الاتصال لمزامنة الإعلان العام:", err))
+    .finally(() => {
+        if (typeof callback === "function") callback();
     });
-
-    const key = "gen_msgs";
-    const jsonStr = JSON.stringify(list);
-    const escapedValue = safeEscapeUnicode(jsonStr);
-    
-    // إرسال البيانات عبر معامل الاستعلام ?value لتجنب أي مشاكل في طول المسار أو الرموز الخاصة
-    const url = `${CLOUD_API_UPDATE}/${key}?value=${encodeURIComponent(escapedValue)}`;
-    
-    fetch(url, { method: "POST" })
-        .then(res => {
-            if (!res.ok) console.error("فشلت مزامنة الإعلانات العامة سحابياً:", res.statusText);
-        })
-        .catch(err => console.error("خطأ في مزامنة الإعلانات العامة:", err))
-        .finally(() => {
-            if (typeof callback === "function") callback();
-        });
 }
 
 // تهيئة عدادات الأيام الثلاثة وحسابها ديناميكياً من سجل الحضور التاريخي

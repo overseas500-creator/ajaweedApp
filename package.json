@@ -2,9 +2,16 @@
   "name": "ajaweed-app",
   "version": "1.0.0",
   "description": "نظام استقبال وإرسال إشعارات الحضور بمدرسة الأجاويد الأولى المتوسطة",
-  "main": "index.html",
+  "main": "server.js",
   "scripts": {
-    "dev": "npx -y browser-sync start --server --files \"*.html, css/*.css, js/*.js\""
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.21.0"
   },
   "keywords": [],
   "author": "Ajaweed School",

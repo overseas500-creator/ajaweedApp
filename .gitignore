@@ -22,3 +22,10 @@ desktop.ini
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Scratch and test scripts
+scratch/
+scratch_check.js
+scratch_list_downloads.js
+scratch_read_excel.py
+
