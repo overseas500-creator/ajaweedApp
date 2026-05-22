@@ -442,7 +442,7 @@ function initDatabase() {
                 if (students.length > 0) {
                     const firstInstalled = students.find(s => s.status === "installed") || students[0];
                     currentStudentId = firstInstalled.id;
-                    refreshMobileSimulator();
+                    renderMobileApp();
                 }
             }
         })
@@ -1816,6 +1816,11 @@ function renderMobileApp() {
     lucide.createIcons();
 }
 
+// اسم بديل احتياطي لـ renderMobileApp لتفادي أي أخطاء في الاستدعاء
+function refreshMobileSimulator() {
+    renderMobileApp();
+}
+
 // التبديل بين تبويبات الهاتف المحاكي (إشعارات خاصة / إعلانات عامة)
 function switchAppTab(tabName) {
     document.querySelectorAll(".app-nav-tab").forEach(tab => tab.classList.remove("active"));
@@ -2192,7 +2197,7 @@ function handleExcelImport(event) {
             if (students.length > 0) {
                 const justImported = students.find(s => s.status === "installed") || students[0];
                 currentStudentId = justImported.id;
-                refreshMobileSimulator();
+                renderMobileApp();
             }
 
             showToast("success", `تم الاستيراد بنجاح! مضاف: ${importedCount}، محدث: ${updatedCount}`);
@@ -2622,7 +2627,7 @@ function processDailyAttendance() {
         if (students.length > 0) {
             const firstInstalled = students.find(s => s.status === "installed" && (s.attendance === "absent" || s.attendance === "delayed")) || students[0];
             currentStudentId = firstInstalled.id;
-            refreshMobileSimulator();
+            renderMobileApp();
         }
 
         // إظهار تنبيه المزامنة السحابية الفورية
