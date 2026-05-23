@@ -4,10 +4,6 @@
     {
       "source": "/parent",
       "destination": "/parent.html"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
     }
   ]
 }

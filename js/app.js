@@ -1,26 +1,70 @@
 // منطق عمل تطبيق الأجاويد (Ajaweed Notification System)
 // مدرسة الأجاويد الأولى المتوسطة
 
-// تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً/محلياً
-const API_BASE = (() => {
-    if (window.location.protocol === 'file:') return 'http://localhost:3000';
-    if (!window.location.hostname) return 'http://localhost:3000';
-    
-    const host = window.location.hostname.toLowerCase();
-    const port = window.location.port;
-    
-    // فحص ما إذا كان العنوان محلياً ويعمل على منفذ مختلف عن 3000
-    const isLocalHost = host === 'localhost' || 
-                        host === '127.0.0.1' || 
-                        host.startsWith('192.168.') || 
-                        host.startsWith('10.') || 
-                        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
-                        
-    if (isLocalHost && port !== '3000') {
-        return 'http://localhost:3000';
+// تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً (Google Apps Script)
+const API_BASE = ""; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbza4LA5msWPFJfWiKDqksNAtMy_LSN8MK8rPqBadR0SS05MS7U956B2_xP19N8t65OJ/exec";
+
+// اعتراض جميع اتصالات fetch وتوجيهها إلى Google Apps Script
+const originalFetch = window.fetch;
+window.fetch = async function(url, options) {
+    if (typeof url === 'string' && url.includes('/api/')) {
+        let route = "";
+        let finalUrl = GAS_URL;
+        let finalOptions = { ...options };
+        
+        // استنتاج مسار الطلب
+        if (url.includes('/api/students/bulk')) {
+            route = "bulk_upsert";
+        } else if (url.includes('/api/students/by-phone/')) {
+            const phone = url.split('/').pop();
+            finalUrl += "?route=get_students_by_phone&phone=" + phone;
+        } else if (url.match(/\/api\/students\/[0-9]+$/)) {
+            const id = url.split('/').pop();
+            finalUrl += "?route=get_student&id=" + id;
+        } else if (url.endsWith('/api/students')) {
+            finalUrl += "?route=get_students";
+        } else if (url.includes('/api/general-messages')) {
+            if (options && (options.method === 'POST' || options.method === 'PATCH')) route = "post_general_message";
+            else finalUrl += "?route=get_general_messages";
+        } else if (url.includes('/api/database/reset')) {
+            route = "reset_database";
+        } else if (url.includes('/api/attendance/reset-today')) {
+            route = "reset_attendance";
+        } else if (url.includes('/api/parent-stats/')) {
+            const phone = url.split('/').pop();
+            if (options && (options.method === 'POST' || options.method === 'PATCH')) {
+                route = "update_parent_stats";
+            } else {
+                finalUrl += "?route=get_parent_stats&phone=" + phone;
+            }
+        }
+        
+        // تجهيز طلبات POST لبيئة جوجل سكريبت وتفادي CORS Preflight
+        if (options && (options.method === 'POST' || options.method === 'PATCH')) {
+            finalOptions.method = 'POST';
+            let payload = {};
+            if (options.body) {
+                payload = JSON.parse(options.body);
+            }
+            if (route) payload.route = route;
+            if (url.includes('/api/parent-stats/')) payload.phone = url.split('/').pop();
+            
+            finalOptions.headers = {
+                'Content-Type': 'text/plain;charset=utf-8'
+            };
+            finalOptions.body = JSON.stringify(payload);
+        }
+        
+        try {
+            return await originalFetch(finalUrl, finalOptions);
+        } catch (err) {
+            console.error("GAS Fetch Error:", err);
+            throw err;
+        }
     }
-    return '';
-})();
+    return originalFetch(url, options);
+};
 
 
 
