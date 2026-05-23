@@ -987,11 +987,17 @@ app.get('/parent', (req, res) => {
     res.sendFile(path.join(__dirname, 'parent.html'));
 });
 
-// تشغيل الخادم
-app.listen(PORT, () => {
-    console.log(`==================================================================`);
-    console.log(`🚀 خادم تطبيق الأجاويد يعمل بنجاح!`);
-    console.log(`🔗 رابط لوحة تحكم الإدارة: http://localhost:${PORT}`);
-    console.log(`🔗 رابط بوابة أولياء الأمور: http://localhost:${PORT}/parent`);
-    console.log(`==================================================================`);
-});
+// تشغيل الخادم محلياً (يتم تخطيه تلقائياً في بيئة Vercel)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`==================================================================`);
+        console.log(`🚀 خادم تطبيق الأجاويد يعمل بنجاح!`);
+        console.log(`🔗 رابط لوحة تحكم الإدارة: http://localhost:${PORT}`);
+        console.log(`🔗 رابط بوابة أولياء الأمور: http://localhost:${PORT}/parent`);
+        console.log(`==================================================================`);
+    });
+}
+
+// تصدير التطبيق ليكون متوافقاً كدالة سيرفرلس على Vercel
+module.exports = app;
+
