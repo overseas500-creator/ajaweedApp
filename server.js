@@ -761,6 +761,7 @@ class LocalDatabase {
 // 3. مدير قواعد البيانات (Database Hub Selector)
 // ==========================================================================
 let db;
+let dbInitPromise = null;
 
 async function initDatabase() {
     const dbUrl = process.env.DATABASE_URL;
@@ -788,7 +789,17 @@ async function initDatabase() {
 }
 
 // تشغيل وتهيئة اتصال قاعدة البيانات
-initDatabase();
+dbInitPromise = initDatabase();
+
+// ميدلوير لضمان اكتمال تهيئة قاعدة البيانات قبل معالجة أي طلب
+app.use(async (req, res, next) => {
+    try {
+        await dbInitPromise;
+        next();
+    } catch (err) {
+        res.status(500).json({ error: 'فشل تهيئة الاتصال بقاعدة البيانات السحابية', details: err.message });
+    }
+});
 
 // ==========================================================================
 // 4. مسارات الـ API (RESTful Backend Endpoints)

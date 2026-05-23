@@ -1,23 +1,13 @@
 {
-  "version": 2,
-  "builds": [
+  "cleanUrls": true,
+  "rewrites": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server.js"
+      "source": "/parent",
+      "destination": "/parent.html"
     },
     {
-      "src": "/parent",
-      "dest": "parent.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "$1"
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
     }
   ]
 }
