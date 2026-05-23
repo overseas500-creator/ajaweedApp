@@ -2,9 +2,26 @@
 // مدرسة الأجاويد الأولى المتوسطة
 
 // تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً/محلياً
-const API_BASE = (window.location.protocol === 'file:' || !window.location.host) 
-    ? 'http://localhost:3000' 
-    : '';
+const API_BASE = (() => {
+    if (window.location.protocol === 'file:') return 'http://localhost:3000';
+    if (!window.location.hostname) return 'http://localhost:3000';
+    
+    const host = window.location.hostname.toLowerCase();
+    const port = window.location.port;
+    
+    // فحص ما إذا كان العنوان محلياً ويعمل على منفذ مختلف عن 3000
+    const isLocalHost = host === 'localhost' || 
+                        host === '127.0.0.1' || 
+                        host.startsWith('192.168.') || 
+                        host.startsWith('10.') || 
+                        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+                        
+    if (isLocalHost && port !== '3000') {
+        return 'http://localhost:3000';
+    }
+    return '';
+})();
+
 
 
 // ==========================================================================
@@ -2470,15 +2487,15 @@ function processDailyAttendance() {
                     return;
                 }
 
-                // 1. تطبيع رقم الهاتف
-                let mobile = String(rawMobile || '').trim();
-                if (mobile.startsWith("966")) {
-                    mobile = "0" + mobile.substring(3);
-                } else if (mobile.startsWith("5")) {
-                    mobile = "0" + mobile;
-                }
+                // 1. تطبيع رقم الهاتف بشكل متقدم ومقاومة الأرقام التالفة
+                let mobile = normalizePhone(rawMobile);
+                const existingIdx = students.findIndex(s => s.id === studentId);
                 if (!mobile || !/^05\d{8}$/.test(mobile)) {
-                    mobile = "05" + Math.floor(10000000 + Math.random() * 90000000); 
+                    if (existingIdx !== -1 && students[existingIdx].parentPhone) {
+                        mobile = students[existingIdx].parentPhone;
+                    } else {
+                        mobile = "05" + Math.floor(10000000 + Math.random() * 90000000); 
+                    }
                 }
 
                 // 2. استخلاص اسم الأب لولي الأمر
@@ -2541,8 +2558,7 @@ function processDailyAttendance() {
                     delay:  delayMinutes
                 };
 
-                // التحقق مما إذا كان الطالب مسجل مسبقاً في الدليل
-                const existingIdx = students.findIndex(s => s.id === studentId);
+                // التحقق مما إذا كان الطالب مسجل مسبقاً في الدليل (تم تحديده مسبقاً)
                 if (existingIdx !== -1) {
                     const student = students[existingIdx];
 

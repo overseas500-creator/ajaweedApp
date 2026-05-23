@@ -4,9 +4,26 @@
 // ================================================
 
 // تحديد عنوان URL الأساسي للاتصال بالخادم سحابياً/محلياً
-const API_BASE = (window.location.protocol === 'file:' || !window.location.host) 
-    ? 'http://localhost:3000' 
-    : '';
+const API_BASE = (() => {
+    if (window.location.protocol === 'file:') return 'http://localhost:3000';
+    if (!window.location.hostname) return 'http://localhost:3000';
+    
+    const host = window.location.hostname.toLowerCase();
+    const port = window.location.port;
+    
+    // فحص ما إذا كان العنوان محلياً ويعمل على منفذ مختلف عن 3000
+    const isLocalHost = host === 'localhost' || 
+                        host === '127.0.0.1' || 
+                        host.startsWith('192.168.') || 
+                        host.startsWith('10.') || 
+                        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+                        
+    if (isLocalHost && port !== '3000') {
+        return 'http://localhost:3000';
+    }
+    return '';
+})();
+
 
 const SESSION_KEY = "ajaweed_parent_session";
 const STUDENTS_KEY = "ajaweed_parent_students";

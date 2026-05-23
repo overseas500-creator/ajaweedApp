@@ -55,10 +55,18 @@ class PostgresDatabase {
     }
 
     async getStudentsByParentPhone(phone) {
-        // البحث بصيغ متعددة للهاتف لضمان أعلى دقة مطابقة
-        const normalized = phone.replace(/\D/g, '').replace(/^9665/, '05').replace(/^5(\d{8})$/, '0$1');
-        const query = `SELECT * FROM students WHERE parent_phone = $1 OR parent_phone = $2 ORDER BY name ASC`;
-        const res = await this.pool.query(query, [normalized, phone]);
+        if (!phone) return [];
+        // تطهير الرقم واستخلاص آخر 9 أرقام (مثال: 559479015)
+        const digits = phone.replace(/\D/g, '');
+        if (digits.length < 9) return [];
+        const suffix = digits.slice(-9); // آخر 9 أرقام
+        
+        const query = `
+            SELECT * FROM students 
+            WHERE right(regexp_replace(parent_phone, '\\D', '', 'g'), 9) = $1 
+            ORDER BY name ASC
+        `;
+        const res = await this.pool.query(query, [suffix]);
         return res.rows.map(row => this.mapStudentFromDb(row));
     }
 
@@ -73,6 +81,19 @@ class PostgresDatabase {
         if (!studentsList || studentsList.length === 0) {
             return { matchedCount: 0, modifiedCount: 0, upsertedCount: 0 };
         }
+
+        const normalizePhone = (phone) => {
+            if (!phone) return "";
+            let p = String(phone).trim();
+            if (p.endsWith(".0")) p = p.slice(0, -2);
+            p = p.replace(/\D/g, "");
+            if (p.startsWith("9665") && p.length === 12) {
+                p = "0" + p.slice(3);
+            } else if (p.startsWith("5") && p.length === 9) {
+                p = "0" + p;
+            }
+            return p;
+        };
 
         const client = await this.pool.connect();
         try {
@@ -101,7 +122,7 @@ class PostgresDatabase {
                         JSON.stringify(s.attendanceHistory || []),
                         JSON.stringify(s.privateMessages || []),
                         s.parentName || "",
-                        s.parentPhone || ""
+                        normalizePhone(s.parentPhone)
                     ];
                     
                     const placeholders = [];
@@ -500,17 +521,15 @@ class LocalDatabase {
     }
 
     async getStudentsByParentPhone(phone) {
-        const normalize = (p) => {
-            if (!p) return '';
-            let s = String(p).replace(/\D/g, '');
-            if (s.startsWith('9665') && s.length === 12) s = '0' + s.slice(3);
-            else if (s.startsWith('5') && s.length === 9) s = '0' + s;
-            return s;
-        };
-        const normPhone = normalize(phone);
+        if (!phone) return [];
+        const digits = String(phone).replace(/\D/g, '');
+        if (digits.length < 9) return [];
+        const suffix = digits.slice(-9);
+        
         return this.data.students.filter(s => {
-            const storedNorm = normalize(s.parentPhone || '');
-            return storedNorm === normPhone || (s.parentPhone || '') === phone;
+            if (!s.parentPhone) return false;
+            const sDigits = String(s.parentPhone).replace(/\D/g, '');
+            return sDigits.slice(-9) === suffix;
         });
     }
 
@@ -531,6 +550,19 @@ class LocalDatabase {
         let modifiedCount = 0;
         let upsertedCount = 0;
 
+        const normalizePhone = (phone) => {
+            if (!phone) return "";
+            let p = String(phone).trim();
+            if (p.endsWith(".0")) p = p.slice(0, -2);
+            p = p.replace(/\D/g, "");
+            if (p.startsWith("9665") && p.length === 12) {
+                p = "0" + p.slice(3);
+            } else if (p.startsWith("5") && p.length === 9) {
+                p = "0" + p;
+            }
+            return p;
+        };
+
         for (const s of studentsList) {
             const index = this.data.students.findIndex(x => x.id === s.id);
             const updateData = {
@@ -544,7 +576,7 @@ class LocalDatabase {
                 lateDaysCount: s.lateDaysCount || 0,
                 absentDaysCount: s.absentDaysCount || 0,
                 parentName: s.parentName !== undefined ? s.parentName : "",
-                parentPhone: s.parentPhone !== undefined ? s.parentPhone : ""
+                parentPhone: normalizePhone(s.parentPhone)
             };
 
             if (s.attendanceHistory !== undefined) {
