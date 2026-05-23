@@ -1451,10 +1451,29 @@ function handleSendNotification(e) {
             attachment: currentAttachment ? { ...currentAttachment } : null
         });
 
-        // المزامنة السحابية للإعلان العام
-        if (typeof syncGeneralMessagesToCloud === "function") {
-            syncGeneralMessagesToCloud();
-        }
+        // المزامنة السحابية الفورية للإعلان العام مع توفير تغذية راجعة فورية للإدارة
+        showToast("success", "جاري نشر ومزامنة الإعلان العام سحابياً...");
+        
+        fetch(API_BASE + '/api/general-messages', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newAnn)
+        })
+        .then(res => {
+            if (res.ok) {
+                showToast("success", "✅ تم نشر الإعلان العام ومزامنته سحابياً بنجاح! سيظهر فوراً لأولياء الأمور.");
+            } else {
+                showToast("warning", "⚠️ تم حفظ الإعلان محلياً، ولكن فشل نشره سحابياً. تأكد من اتصال السيرفر.");
+            }
+            syncData();
+            refreshUI();
+        })
+        .catch(err => {
+            console.error("❌ خطأ في الاتصال لنشر الإعلان العام:", err);
+            showToast("warning", "⚠️ تم حفظ الإعلان محلياً، ولكن تعذر الاتصال بالسيرفر للمزامنة السحابية.");
+            syncData();
+            refreshUI();
+        });
 
     } else {
         // إرسال إشعار لطالب محدد
