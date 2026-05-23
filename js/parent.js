@@ -54,6 +54,36 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         showLogin();
     }
+
+    // إظهار شريط تنبيه إذا تم فتح التطبيق كملف محلي
+    if (window.location.protocol === 'file:') {
+        const banner = document.createElement('div');
+        banner.style.cssText = `
+            background: linear-gradient(90deg, #856404, #997306);
+            color: #fff;
+            text-align: center;
+            padding: 10px 20px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 100000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            direction: rtl;
+            border-bottom: 2px solid #ffc107;
+        `;
+        banner.innerHTML = `
+            <span>⚠️ تنبيه:</span>
+            <span>أنت تستعرض بوابة أولياء الأمور كملف محلي. لضمان المزامنة السحابية وتحديث الإشعارات فوراً، يرجى فتح البوابة عبر الرابط التالي:</span>
+            <a href="http://localhost:3000/parent" target="_blank" style="color: #fff; font-weight: bold; text-decoration: underline; background: rgba(0,0,0,0.25); padding: 4px 12px; border-radius: 6px; transition: background 0.2s;">http://localhost:3000/parent</a>
+        `;
+        document.body.prepend(banner);
+    }
 });
 
 // ==========================================
